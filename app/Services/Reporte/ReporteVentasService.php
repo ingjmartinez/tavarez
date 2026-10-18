@@ -7,6 +7,7 @@ use App\Models\VentaUsuario;
 use App\Services\Terminal\TerminalService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Reporte de ventas por periodo. Las ventas (ventas_usuarios) se relacionan con el catalogo de
@@ -67,14 +68,13 @@ class ReporteVentasService
     {
         $catalogo = $this->terminales->catalogo();
         $porTipo = in_array('tipo', $agrupar, true);
-        $porFecha = in_array('fecha', $agrupar, true);
         $incluirRaza = ! empty($filtros['raza']);
         $pivotear = $porTipo || $incluirRaza;
 
         $query = VentaUsuario::query()
             ->whereBetween('fecha', [$desde, $hasta])
             ->whereNotNull('agencia_id')
-            ->selectRaw("COALESCE(NULLIF(TRIM(LEADING '0' FROM TRIM(agencia_id)), ''), '0') AS terminal_key")
+            ->selectRaw($this->terminalKeyExpression().' AS terminal_key')
             ->selectRaw('SUM(monto) AS total_venta')
             ->selectRaw('COUNT(*) AS registros')
             ->groupBy('terminal_key');
@@ -87,9 +87,7 @@ class ReporteVentasService
             $query->addSelect('tipo')->groupBy('tipo');
         }
 
-        if ($porFecha) {
-            $query->addSelect('fecha')->groupBy('fecha');
-        }
+        $query->addSelect('fecha')->groupBy('fecha');
 
         $dimensiones = array_values(array_diff($agrupar, ['tipo']));
 
@@ -100,10 +98,12 @@ class ReporteVentasService
         $acumulado = [];
         $totalesPorTipo = [];
         $terminalesTotales = [];
+        $diasTotales = [];
+        $diasPorTipo = [];
         $totalVenta = 0.0;
         $totalRegistros = 0;
 
-        $acumular = function (iterable $rows, callable $etiquetaTipo) use ($catalogo, $filtros, $dimensiones, $pivotear, &$acumulado, &$totalesPorTipo, &$terminalesTotales, &$totalVenta, &$totalRegistros): void {
+        $acumular = function (iterable $rows, callable $etiquetaTipo) use ($catalogo, $filtros, $dimensiones, $pivotear, &$acumulado, &$totalesPorTipo, &$terminalesTotales, &$diasTotales, &$diasPorTipo, &$totalVenta, &$totalRegistros): void {
             foreach ($rows as $row) {
                 $key = (string) $row->terminal_key;
 
@@ -132,7 +132,12 @@ class ReporteVentasService
                     'registros' => 0,
                     'total_venta' => 0.0,
                     'tipos' => [],
+                    'dias' => [],
+                    'dias_por_tipo' => [],
                 ];
+                $fecha = substr((string) $row->fecha, 0, 10);
+                $acumulado[$clave]['dias'][$fecha] = true;
+                $diasTotales[$fecha] = true;
                 $acumulado[$clave]['terminales'][$key] = true;
                 $acumulado[$clave]['registros'] += (int) $row->registros;
                 $acumulado[$clave]['total_venta'] += (float) $row->total_venta;
@@ -141,6 +146,8 @@ class ReporteVentasService
                     $tipo = $etiquetaTipo($row);
                     $acumulado[$clave]['tipos'][$tipo] = ($acumulado[$clave]['tipos'][$tipo] ?? 0.0) + (float) $row->total_venta;
                     $totalesPorTipo[$tipo] = ($totalesPorTipo[$tipo] ?? 0.0) + (float) $row->total_venta;
+                    $acumulado[$clave]['dias_por_tipo'][$tipo][$fecha] = true;
+                    $diasPorTipo[$tipo][$fecha] = true;
                 }
 
                 $terminalesTotales[$key] = true;
@@ -152,7 +159,7 @@ class ReporteVentasService
         $acumular($query->get(), fn (object $row): string => $porTipo ? (string) ($row->tipo ?? 'Sin tipo') : self::ETIQUETA_USUARIOS);
 
         if ($incluirRaza) {
-            $acumular($this->consultaRaza($desde, $hasta, $porFecha)->get(), fn (): string => self::ETIQUETA_RAZA);
+            $acumular($this->consultaRaza($desde, $hasta)->get(), fn (): string => self::ETIQUETA_RAZA);
         }
 
         $filas = collect($acumulado)
@@ -162,6 +169,8 @@ class ReporteVentasService
                 'registros' => $fila['registros'],
                 'total_venta' => round($fila['total_venta'], 2),
                 'tipos' => array_map(fn (float $monto): float => round($monto, 2), $fila['tipos']),
+                'promedio' => round($fila['total_venta'] / count($fila['dias']), 2),
+                'promedios_por_tipo' => collect($fila['tipos'])->map(fn (float $monto, string $tipo): float => round($monto / count($fila['dias_por_tipo'][$tipo]), 2))->all(),
             ])
             ->sortByDesc('total_venta')
             ->values();
@@ -186,6 +195,8 @@ class ReporteVentasService
                 'registros' => $totalRegistros,
                 'total_venta' => round($totalVenta, 2),
                 'por_tipo' => array_map(fn (float $monto): float => round($monto, 2), $totalesPorTipo),
+                'promedio' => $diasTotales === [] ? 0.0 : round($totalVenta / count($diasTotales), 2),
+                'promedios_por_tipo' => collect($totalesPorTipo)->map(fn (float $monto, string $tipo): float => round($monto / count($diasPorTipo[$tipo]), 2))->all(),
             ],
             'cobertura' => $this->cobertura($desde, $hasta),
             'cobertura_raza' => $incluirRaza ? $this->coberturaRaza($desde, $hasta) : null,
@@ -195,19 +206,26 @@ class ReporteVentasService
     /**
      * Solo el campo `ventas` de ventas raza; premios y premios pagados no se incluyen.
      */
-    private function consultaRaza(string $desde, string $hasta, bool $porFecha): Builder
+    private function terminalKeyExpression(): string
+    {
+        if (DB::getDriverName() === 'sqlite') {
+            return "COALESCE(NULLIF(LTRIM(TRIM(agencia_id), '0'), ''), '0')";
+        }
+
+        return "COALESCE(NULLIF(TRIM(LEADING '0' FROM TRIM(agencia_id)), ''), '0')";
+    }
+
+    private function consultaRaza(string $desde, string $hasta): Builder
     {
         $query = VentaRaza::query()
             ->whereBetween('fecha', [$desde, $hasta])
             ->whereNotNull('agencia_id')
-            ->selectRaw("COALESCE(NULLIF(TRIM(LEADING '0' FROM TRIM(agencia_id)), ''), '0') AS terminal_key")
+            ->selectRaw($this->terminalKeyExpression().' AS terminal_key')
             ->selectRaw('SUM(ventas) AS total_venta')
             ->selectRaw('COUNT(*) AS registros')
             ->groupBy('terminal_key');
 
-        if ($porFecha) {
-            $query->addSelect('fecha')->groupBy('fecha');
-        }
+        $query->addSelect('fecha')->groupBy('fecha');
 
         return $query;
     }
