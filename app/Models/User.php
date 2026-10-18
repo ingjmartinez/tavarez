@@ -18,6 +18,10 @@ class User extends Authenticatable implements MustVerifyEmail
     use Notifiable;
     use TwoFactorAuthenticatable;
 
+    public const ROLE_ADMIN = 'admin';
+
+    public const ROLE_OPERADOR = 'operador';
+
     /**
      * The attributes that are mass assignable.
      *

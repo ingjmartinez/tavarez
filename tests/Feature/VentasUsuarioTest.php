@@ -126,3 +126,14 @@ test('ventas of one date can be deleted without touching other dates', function 
 
     expect(VentaUsuario::count())->toBe(1);
 });
+
+test('an operator cannot delete api data but an admin can', function () {
+    $operador = User::factory()->create(['role' => User::ROLE_OPERADOR]);
+    $this->actingAs($operador)
+        ->deleteJson(route('ventas-usuario.eliminar'), ['fecha' => '2026-01-01'])
+        ->assertForbidden();
+
+    $this->actingAs(User::factory()->create(['role' => User::ROLE_ADMIN]))
+        ->deleteJson(route('ventas-usuario.eliminar'), ['fecha' => '2026-01-01'])
+        ->assertOk();
+});

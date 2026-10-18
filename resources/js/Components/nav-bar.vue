@@ -611,6 +611,9 @@ export default {
             </BButton>
           </div>
 
+          <!--
+            Notificaciones ocultas. Se conservan por si se necesitan de nuevo:
+            quitar este comentario para reactivarlas.
           <BDropdown variant="ghost-dark" dropstart class="ms-1 dropdown"
             :offset="{ alignmentAxis: 57, crossAxis: 0, mainAxis: -42 }"
             toggle-class="btn-icon btn-topbar rounded-circle arrow-none" id="page-header-notifications-dropdown"
@@ -863,6 +866,7 @@ export default {
               </BTab>
             </BTabs>
           </BDropdown>
+          -->
 
           <BDropdown variant="link" class="ms-sm-3 header-item topbar-user" toggle-class="rounded-circle arrow-none" menu-class="dropdown-menu-end" :offset="{ alignmentAxis: -14, crossAxis: 0, mainAxis: 0 }">
             <template #button-content>
@@ -870,7 +874,7 @@ export default {
                 <img v-if="$page.props.jetstream.managesProfilePhotos" class="rounded-circle header-profile-user" :src="$page.props.auth.user.profile_photo_url" :alt="$page.props.auth.user.name">
                 <span class="text-start ms-xl-2">
                   <span class="d-none d-xl-inline-block ms-1 fw-medium user-name-text">{{ $page.props.auth.user.name }}</span>
-                  <span class="d-none d-xl-block ms-1 fs-12 user-name-sub-text">Founder</span>
+                  <span class="d-none d-xl-block ms-1 fs-12 user-name-sub-text">{{ $page.props.auth.user.role === 'admin' ? 'Administrador' : 'Operador' }}</span>
                 </span>
               </span>
             </template>

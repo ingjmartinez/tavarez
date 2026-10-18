@@ -295,7 +295,7 @@ export default {
               <BCol md="6" class="d-flex gap-2">
                 <BButton variant="primary" :disabled="loading" @click="consultar">Consultar</BButton>
                 <BButton variant="success" :disabled="loading" @click="guardar">Guardar data</BButton>
-                <BButton variant="danger" :disabled="loading" @click="eliminar">Eliminar data</BButton>
+                <BButton v-if="$page.props.permisos.eliminar" variant="danger" :disabled="loading" @click="eliminar">Eliminar data</BButton>
                 <BButton variant="warning" :disabled="loading" @click="rangoModal = true">Generar data por fecha</BButton>
               </BCol>
             </BRow>
@@ -375,7 +375,7 @@ export default {
       </BRow>
       <div class="d-flex justify-content-end gap-2">
         <BButton variant="light" @click="rangoModal = false">Cancelar</BButton>
-        <BButton variant="danger" @click="procesarRango('eliminar')">Eliminar data</BButton>
+        <BButton v-if="$page.props.permisos.eliminar" variant="danger" @click="procesarRango('eliminar')">Eliminar data</BButton>
         <BButton variant="success" @click="procesarRango('generar')">Generar data</BButton>
       </div>
     </BModal>

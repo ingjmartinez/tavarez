@@ -257,9 +257,9 @@ export default {
               </BCol>
               <BCol md="8" class="d-flex flex-wrap gap-2">
                 <BButton variant="primary" :disabled="loading" @click="procesarFecha">Procesar fecha</BButton>
-                <BButton variant="danger" :disabled="loading" @click="eliminarFecha">Eliminar fecha</BButton>
+                <BButton v-if="$page.props.permisos.eliminar" variant="danger" :disabled="loading" @click="eliminarFecha">Eliminar fecha</BButton>
                 <BButton variant="warning" :disabled="loading" @click="rangoModal = true">Procesar por rango</BButton>
-                <BButton variant="danger" :disabled="loading" @click="rangoModal = true">Eliminar por rango</BButton>
+                <BButton v-if="$page.props.permisos.eliminar" variant="danger" :disabled="loading" @click="rangoModal = true">Eliminar por rango</BButton>
               </BCol>
             </BRow>
 
@@ -326,7 +326,7 @@ export default {
       </BRow>
       <div class="d-flex justify-content-end gap-2">
         <BButton variant="light" @click="rangoModal = false">Cerrar</BButton>
-        <BButton variant="danger" @click="procesarRango('eliminar')">Eliminar rango</BButton>
+        <BButton v-if="$page.props.permisos.eliminar" variant="danger" @click="procesarRango('eliminar')">Eliminar rango</BButton>
         <BButton variant="primary" @click="procesarRango('procesar')">Procesar rango</BButton>
       </div>
     </BModal>

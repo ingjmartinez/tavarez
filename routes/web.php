@@ -56,28 +56,28 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
         Route::post('/token', 'generarToken')->name('token');
         Route::get('/consultar', 'consultar')->name('consultar');
         Route::post('/guardar', 'guardar')->name('guardar');
-        Route::delete('/eliminar', 'eliminar')->name('eliminar');
+        Route::delete('/eliminar', 'eliminar')->name('eliminar')->middleware('can:eliminar-datos');
     });
 
     Route::prefix('api-pagos-misma-empresa')->name('pagos-misma-empresa.')->controller(PagosMismaEmpresaController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/consultar', 'consultar')->name('consultar');
         Route::post('/guardar', 'guardar')->name('guardar');
-        Route::delete('/eliminar', 'eliminar')->name('eliminar');
+        Route::delete('/eliminar', 'eliminar')->name('eliminar')->middleware('can:eliminar-datos');
     });
 
     Route::prefix('api-pagos-otra-empresa')->name('pagos-otra-empresa.')->controller(PagosOtraEmpresaController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/consultar', 'consultar')->name('consultar');
         Route::post('/guardar', 'guardar')->name('guardar');
-        Route::delete('/eliminar', 'eliminar')->name('eliminar');
+        Route::delete('/eliminar', 'eliminar')->name('eliminar')->middleware('can:eliminar-datos');
     });
 
     Route::prefix('api-ventas-raza')->name('ventas-raza.')->controller(VentasRazaController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/consultar', 'consultar')->name('consultar');
         Route::post('/guardar', 'guardar')->name('guardar');
-        Route::delete('/eliminar', 'eliminar')->name('eliminar');
+        Route::delete('/eliminar', 'eliminar')->name('eliminar')->middleware('can:eliminar-datos');
     });
 
     Route::controller(VelzonRoutesController::class)->group(function () {
