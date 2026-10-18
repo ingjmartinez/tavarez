@@ -79,6 +79,10 @@ export default {
               <li class="menu-title">
                 <span data-key="t-menu"> {{ $t("t-menu") }}</span>
               </li>
+              <!--
+                Secciones de la plantilla ocultas (no se renderizan ni se cargan):
+                Dashboard, Apps y Autenticacion. El codigo se conserva por si se necesita
+                de nuevo: quitar este comentario para reactivarlas.
               <li class="nav-item">
                 <a class="nav-link menu-link" href="#sidebarDashboards" data-bs-toggle="collapse" role="button"
                   aria-expanded="false" aria-controls="sidebarDashboards">
@@ -130,7 +134,6 @@ export default {
                   </ul>
                 </div>
               </li>
-              <!-- end Dashboard Menu -->
               <li class="nav-item">
                 <a class="nav-link menu-link" href="#sidebarApps" data-bs-toggle="collapse" role="button"
                   aria-expanded="false" aria-controls="sidebarApps">
@@ -786,43 +789,7 @@ export default {
                   </ul>
                 </div>
               </li>
-
-              <li class="nav-item">
-                <a class="nav-link menu-link" href="#sidebarApi" data-bs-toggle="collapse" role="button"
-                  aria-expanded="false" aria-controls="sidebarApi">
-                  <i class="ri-code-s-slash-line"></i>
-                  <span>API</span>
-                </a>
-                <div class="collapse menu-dropdown" id="sidebarApi">
-                  <ul class="nav nav-sm flex-column">
-                    <li class="nav-item">
-                      <Link href="/api-procesar-todo" class="nav-link">
-                      Procesar todo
-                      </Link>
-                    </li>
-                    <li class="nav-item">
-                      <Link href="/api-ventas-usuario" class="nav-link">
-                      Ventas por usuario
-                      </Link>
-                    </li>
-                    <li class="nav-item">
-                      <Link href="/api-pagos-misma-empresa" class="nav-link">
-                      Pagos misma empresa
-                      </Link>
-                    </li>
-                    <li class="nav-item">
-                      <Link href="/api-pagos-otra-empresa" class="nav-link">
-                      Pagos a otra empresa
-                      </Link>
-                    </li>
-                    <li class="nav-item">
-                      <Link href="/api-ventas-raza" class="nav-link">
-                      Ventas raza
-                      </Link>
-                    </li>
-                  </ul>
-                </div>
-              </li>
+              -->
 
               <li class="nav-item">
                 <a class="nav-link menu-link" href="#sidebarContabilidad" data-bs-toggle="collapse" role="button"
@@ -869,6 +836,42 @@ export default {
                     <li class="nav-item">
                       <Link href="/reporte-ventas" class="nav-link">
                       Ventas
+                      </Link>
+                    </li>
+                  </ul>
+                </div>
+              </li>
+
+              <li class="nav-item">
+                <a class="nav-link menu-link" href="#sidebarApi" data-bs-toggle="collapse" role="button"
+                  aria-expanded="false" aria-controls="sidebarApi">
+                  <span>API</span>
+                </a>
+                <div class="collapse menu-dropdown" id="sidebarApi">
+                  <ul class="nav nav-sm flex-column">
+                    <li class="nav-item">
+                      <Link href="/api-procesar-todo" class="nav-link">
+                      Procesar todo
+                      </Link>
+                    </li>
+                    <li class="nav-item">
+                      <Link href="/api-ventas-usuario" class="nav-link">
+                      Ventas por usuario
+                      </Link>
+                    </li>
+                    <li class="nav-item">
+                      <Link href="/api-pagos-misma-empresa" class="nav-link">
+                      Pagos misma empresa
+                      </Link>
+                    </li>
+                    <li class="nav-item">
+                      <Link href="/api-pagos-otra-empresa" class="nav-link">
+                      Pagos a otra empresa
+                      </Link>
+                    </li>
+                    <li class="nav-item">
+                      <Link href="/api-ventas-raza" class="nav-link">
+                      Ventas raza
                       </Link>
                     </li>
                   </ul>

@@ -874,6 +874,10 @@ export default {
                 </span>
               </span>
             </template>
+            <!--
+              Opciones del menu de usuario ocultas (Profile, API Tokens, Messages,
+              Taskboard, Help, Balance, Settings, Lock screen). Se conservan por si se
+              necesitan de nuevo: quitar este comentario para reactivarlas.
             <h6 class="dropdown-header">Welcome {{ $page.props.auth.user.name }}!</h6>
             <Link class="dropdown-item" :href="route('profile.show')"><i class="mdi mdi-account-circle text-muted fs-16 align-middle me-1"></i>
             <span class="align-middle">Profile</span>
@@ -904,6 +908,7 @@ export default {
             <Link class="dropdown-item" href="/auth/lockscreen-basic"><i class="mdi mdi-lock text-muted fs-16 align-middle me-1"></i>
             <span class="align-middle"> Lock screen</span>
             </Link>
+            -->
 
             <!-- Authentication -->
             <form method="POST" @submit.prevent="logout" class="dropdown-item">
