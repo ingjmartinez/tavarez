@@ -41,20 +41,7 @@ const submit = () => {
 
     <div class="auth-page-content">
       <BContainer>
-        <BRow>
-          <BCol lg="12">
-            <div class="text-center mt-sm-5 mb-4 text-white-50">
-              <div>
-                <Link href="/" class="d-inline-block auth-logo">
-                  <img src="@assets/images/logo-light.png" alt="" height="20">
-                </Link>
-              </div>
-              <p class="mt-3 fs-15 fw-medium">Business Intelligence</p>
-            </div>
-          </BCol>
-        </BRow>
-
-        <BRow class="justify-content-center">
+        <BRow class="justify-content-center mt-4 mt-sm-5 pt-5">
           <BCol md="8" lg="6" xl="5">
             <BCard no-body class="mt-4">
 
@@ -130,7 +117,7 @@ const submit = () => {
         <BRow>
           <BCol lg="12">
             <div class="text-center">
-              <p class="mb-0 text-muted">&copy; {{ new Date().getFullYear() }} Tavarez. Crafted with <i class="mdi mdi-heart text-danger"></i> by Themesbrand</p>
+              <p class="mb-0 text-muted">&copy; {{ new Date().getFullYear() }} Derechos reservados por HelpproCompany</p>
             </div>
           </BCol>
         </BRow>
