@@ -32,7 +32,7 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
         Route::get('/', 'index')->name('index');
         Route::get('/consultar', 'consultar')->name('consultar');
         Route::post('/sincronizar', 'sincronizar')->name('sincronizar');
-        Route::delete('/eliminar', 'eliminar')->name('eliminar');
+        Route::delete('/eliminar', 'eliminar')->name('eliminar')->middleware('can:eliminar-datos');
     });
 
     Route::prefix('reporte-ventas')->name('reporte-ventas.')->controller(ReporteVentasController::class)->group(function () {

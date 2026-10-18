@@ -168,7 +168,7 @@ export default {
             <div class="d-flex flex-wrap gap-2 mb-4">
               <BButton variant="primary" :disabled="loading" @click="consultar">Consultar</BButton>
               <BButton variant="success" :disabled="loading" @click="sincronizar">Sincronizar</BButton>
-              <BButton variant="danger" :disabled="loading" @click="eliminar">Eliminar data</BButton>
+              <BButton v-if="$page.props.permisos.eliminar" variant="danger" :disabled="loading" @click="eliminar">Eliminar data</BButton>
             </div>
 
             <BRow class="g-2 mb-2 align-items-center">
