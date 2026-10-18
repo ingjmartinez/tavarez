@@ -18,6 +18,9 @@ export default {
       hasta: iso(hoy),
       modo: "subgrupo",
       categoria: "",
+      porTerminal: false,
+      ordenProducto: null,
+      ordenDireccion: "desc",
       resultado: null,
       loading: false,
       busqueda: "",
@@ -35,7 +38,18 @@ export default {
     filasFiltradas() {
       const term = this.busqueda.trim().toLowerCase();
       const filas = this.resultado?.filas ?? [];
-      return term ? filas.filter((fila) => String(fila[this.modo] ?? "").toLowerCase().includes(term)) : filas;
+      const filtradas = term ? filas.filter((fila) => `${fila[this.modo] ?? ""} ${fila.terminal ?? ""} ${fila.nombre ?? ""}`.toLowerCase().includes(term)) : filas;
+      if (!this.porTerminal || !this.ordenProducto) return filtradas;
+
+      return [...filtradas].sort((primera, segunda) => {
+        const grupo = String(primera[this.modo] ?? "").localeCompare(String(segunda[this.modo] ?? ""), "es", { numeric: true, sensitivity: "base" });
+        if (grupo) return grupo;
+
+        const ventaPrimera = Number(primera.tipos?.[this.ordenProducto] ?? 0);
+        const ventaSegunda = Number(segunda.tipos?.[this.ordenProducto] ?? 0);
+        const diferencia = this.ordenDireccion === "desc" ? ventaSegunda - ventaPrimera : ventaPrimera - ventaSegunda;
+        return diferencia || String(primera.terminal ?? "").localeCompare(String(segunda.terminal ?? ""), "es", { numeric: true });
+      });
     },
     totalPages() {
       return Math.max(1, Math.ceil(this.filasFiltradas.length / this.perPage));
@@ -49,12 +63,22 @@ export default {
     },
   },
   watch: {
-    modo() { this.categoria = ""; this.resultado = null; },
+    modo() { this.categoria = ""; this.resultado = null; this.ordenProducto = null; },
     categoria() { this.resultado = null; },
+    porTerminal() { this.resultado = null; this.ordenProducto = null; },
     perPage() { this.page = 1; },
     busqueda() { this.page = 1; },
   },
   methods: {
+    ordenarProducto(tipo) {
+      if (this.ordenProducto === tipo) {
+        this.ordenDireccion = this.ordenDireccion === "desc" ? "asc" : "desc";
+      } else {
+        this.ordenProducto = tipo;
+        this.ordenDireccion = "desc";
+      }
+      this.page = 1;
+    },
     formatMonto(value) {
       return Number(value || 0).toLocaleString("es-DO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     },
@@ -76,7 +100,7 @@ export default {
       });
       try {
         const { data } = await axios.get(route("reporte-subgrupos.datos"), {
-          params: { desde: this.desde, hasta: this.hasta, modo: this.modo, categoria: this.categoria },
+          params: { desde: this.desde, hasta: this.hasta, modo: this.modo, categoria: this.categoria, por_terminal: this.porTerminal ? 1 : 0 },
         });
         this.resultado = data;
         await this.esperarRender();
@@ -137,10 +161,14 @@ export default {
                 <BButton variant="primary" :disabled="loading || !categoria" @click="generar">{{ loading ? "Generando..." : "Generar reporte" }}</BButton>
               </BCol>
             </BRow>
+            <div class="form-check mb-3">
+              <input id="por-terminal-subgrupos" v-model="porTerminal" class="form-check-input" type="checkbox" />
+              <label for="por-terminal-subgrupos" class="form-check-label">Desglosar por terminal</label>
+            </div>
             <template v-if="resultado">
               <div class="d-flex flex-wrap gap-4 mb-3">
                 <div><small class="text-muted d-block">Venta total</small><h5 class="mb-0 text-success">{{ formatMonto(resultado.totales.total_venta) }}</h5></div>
-                <div><small class="text-muted d-block">{{ nombreDimension }} con venta</small><h5 class="mb-0">{{ resultado.total_filas.toLocaleString() }}</h5></div>
+                <div v-if="!porTerminal"><small class="text-muted d-block">{{ nombreDimension }} con venta</small><h5 class="mb-0">{{ resultado.total_filas.toLocaleString() }}</h5></div>
                 <div><small class="text-muted d-block">Terminales con venta</small><h5 class="mb-0">{{ resultado.totales.terminales.toLocaleString() }}</h5></div>
               </div>
               <div v-if="coberturaIncompleta" class="alert alert-warning py-2">
@@ -160,8 +188,15 @@ export default {
                   <thead class="table-light">
                     <tr>
                       <th>{{ nombreDimension }}</th>
+                      <th v-if="porTerminal">Terminal</th>
+                      <th v-if="porTerminal">Nombre</th>
                       <template v-for="tipo in resultado.tipos" :key="tipo">
-                        <th class="text-end">{{ tipo }}</th>
+                        <th class="text-end">
+                          <button v-if="porTerminal" type="button" class="btn btn-link btn-sm p-0 text-reset text-decoration-none fw-semibold" :aria-label="`Ordenar ${tipo} por venta`" @click="ordenarProducto(tipo)">
+                            {{ tipo }} <span v-if="ordenProducto === tipo">{{ ordenDireccion === "desc" ? "▼" : "▲" }}</span><span v-else class="text-muted">↕</span>
+                          </button>
+                          <template v-else>{{ tipo }}</template>
+                        </th>
                         <th class="text-end">Promedio {{ tipo }}</th>
                       </template>
                       <th class="text-end">Promedio total</th>
@@ -169,8 +204,10 @@ export default {
                     </tr>
                   </thead>
                   <tbody>
-                    <tr v-for="fila in filasPagina" :key="fila[modo]">
+                    <tr v-for="fila in filasPagina" :key="`${fila[modo]}-${fila.terminal ?? ''}`">
                       <td>{{ fila[modo] }}</td>
+                      <td v-if="porTerminal">{{ fila.terminal }}</td>
+                      <td v-if="porTerminal">{{ fila.nombre }}</td>
                       <template v-for="tipo in resultado.tipos" :key="tipo">
                         <td class="text-end">{{ formatMonto(fila.tipos[tipo]) }}</td>
                         <td class="text-end">{{ formatMonto(fila.promedios_por_tipo[tipo]) }}</td>
@@ -179,12 +216,14 @@ export default {
                       <td class="text-end">{{ formatMonto(fila.total_venta) }}</td>
                     </tr>
                     <tr v-if="!filasFiltradas.length">
-                      <td :colspan="resultado.tipos.length * 2 + 3" class="text-center text-muted py-3">Sin ventas para la categoría seleccionada.</td>
+                      <td :colspan="resultado.tipos.length * 2 + 3 + (porTerminal ? 2 : 0)" class="text-center text-muted py-3">Sin ventas para la categoría seleccionada.</td>
                     </tr>
                   </tbody>
                   <tfoot v-if="filasFiltradas.length">
                     <tr>
                       <th>Total</th>
+                      <th v-if="porTerminal"></th>
+                      <th v-if="porTerminal"></th>
                       <template v-for="tipo in resultado.tipos" :key="tipo">
                         <th class="text-end">{{ formatMonto(resultado.totales.por_tipo[tipo]) }}</th>
                         <th class="text-end">{{ formatMonto(resultado.totales.promedios_por_tipo[tipo]) }}</th>

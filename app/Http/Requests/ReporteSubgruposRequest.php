@@ -25,6 +25,7 @@ class ReporteSubgruposRequest extends FormRequest
             'hasta' => ['required', 'date_format:Y-m-d', 'after_or_equal:desde', 'before_or_equal:'.now()->addDay()->toDateString()],
             'modo' => ['required', Rule::in(['subgrupo', 'sociedad'])],
             'categoria' => ['required', 'string', 'max:191'],
+            'por_terminal' => ['sometimes', 'boolean'],
         ];
     }
 }

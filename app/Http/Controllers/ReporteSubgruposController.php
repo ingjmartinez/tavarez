@@ -28,20 +28,22 @@ class ReporteSubgruposController extends Controller
     {
         $datos = $request->validated();
 
-        $categoriasActivas = $this->categorias->activas()[$datos['modo']] ?? [];
         $todasCategorias = $datos['categoria'] === '__todos__';
+        $categoriasActivas = $this->categorias->activas()[$datos['modo']] ?? [];
+        $categoriaValida = $categoriasActivas !== [] && ($todasCategorias || isset($categoriasActivas[$datos['categoria']]));
 
-        if (($todasCategorias && $categoriasActivas === []) || (! $todasCategorias && ! isset($categoriasActivas[$datos['categoria']]))) {
+        if (! $categoriaValida) {
             throw ValidationException::withMessages(['categoria' => 'Seleccione una categoría marcada en Mantenimiento de terminales / Grupo.']);
         }
 
         return response()->json($this->service->generar(
             $datos['desde'],
             $datos['hasta'],
-            [$datos['modo'], 'tipo'],
+            ($datos['por_terminal'] ?? false) ? [$datos['modo'], 'terminal', 'tipo'] : [$datos['modo'], 'tipo'],
             ['raza' => true],
             dimensionSeleccionada: $datos['modo'],
             valorSeleccionado: $todasCategorias ? null : $datos['categoria'],
+            ordenarPorAgrupacion: (bool) ($datos['por_terminal'] ?? false),
         ));
     }
 }

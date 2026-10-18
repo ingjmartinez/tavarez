@@ -136,3 +136,112 @@ test('all corporations includes each marked corporation and excludes unmarked on
         ->assertJsonPath('total_filas', 2)
         ->assertJsonPath('totales.total_venta', 300);
 });
+
+test('terminal breakdown keeps subgroup grouping and marked category scope', function () {
+    $this->actingAs(User::factory()->create());
+
+    foreach ([
+        ['01001', 'Subgrupo A', 100],
+        ['1002', 'Subgrupo A', 200],
+        ['1003', 'Subgrupo B', 300],
+    ] as [$terminal, $subgrupo, $monto]) {
+        CentroCosto::factory()->create(['id_viejo' => $terminal, 'id_sub_grupo' => $subgrupo]);
+        VentaUsuario::factory()->create(['agencia_id' => $terminal, 'tipo' => 'Tradicional', 'monto' => $monto, 'fecha' => '2026-10-01']);
+    }
+
+    $this->putJson(route('terminal.guardar-categorias-reporte'), [
+        'activas' => [['dimension' => 'subgrupo', 'valor' => 'Subgrupo A']],
+    ])->assertOk();
+
+    $base = [
+        'desde' => '2026-10-01',
+        'hasta' => '2026-10-05',
+        'modo' => 'subgrupo',
+        'por_terminal' => true,
+    ];
+
+    $this->getJson(route('reporte-subgrupos.datos', $base + ['categoria' => 'Subgrupo A']))
+        ->assertOk()
+        ->assertJsonPath('total_filas', 2)
+        ->assertJsonPath('filas.0.subgrupo', 'Subgrupo A')
+        ->assertJsonPath('filas.0.terminal', '01001')
+        ->assertJsonPath('totales.total_venta', 300);
+
+    $this->getJson(route('reporte-subgrupos.datos', $base + ['categoria' => '__todos__']))
+        ->assertOk()
+        ->assertJsonPath('total_filas', 2)
+        ->assertJsonPath('totales.total_venta', 300);
+
+    $this->getJson(route('reporte-subgrupos.datos', $base + ['categoria' => 'Subgrupo B']))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('categoria');
+});
+
+test('terminal breakdown keeps corporation grouping', function () {
+    $this->actingAs(User::factory()->create());
+
+    foreach ([
+        ['1001', 'Corporacion A', 100],
+        ['1002', 'Corporacion A', 200],
+        ['1003', 'Corporacion B', 300],
+    ] as [$terminal, $corporacion, $monto]) {
+        CentroCosto::factory()->create(['id_viejo' => $terminal, 'id_sociedad' => $corporacion]);
+        VentaUsuario::factory()->create(['agencia_id' => $terminal, 'tipo' => 'Tradicional', 'monto' => $monto, 'fecha' => '2026-10-01']);
+    }
+
+    $this->putJson(route('terminal.guardar-categorias-reporte'), [
+        'activas' => [
+            ['dimension' => 'sociedad', 'valor' => 'Corporacion A'],
+            ['dimension' => 'sociedad', 'valor' => 'Corporacion B'],
+        ],
+    ])->assertOk();
+
+    $this->getJson(route('reporte-subgrupos.datos', [
+        'desde' => '2026-10-01',
+        'hasta' => '2026-10-05',
+        'modo' => 'sociedad',
+        'categoria' => '__todos__',
+        'por_terminal' => true,
+    ]))
+        ->assertOk()
+        ->assertJsonPath('total_filas', 3)
+        ->assertJsonPath('filas.0.sociedad', 'Corporacion A')
+        ->assertJsonPath('filas.0.terminal', '1001')
+        ->assertJsonPath('filas.1.sociedad', 'Corporacion A')
+        ->assertJsonPath('filas.2.sociedad', 'Corporacion B')
+        ->assertJsonPath('totales.total_venta', 600);
+});
+
+test('terminal rows remain together by subgroup name when all are selected', function () {
+    $this->actingAs(User::factory()->create());
+
+    foreach ([
+        ['1003', 'Subgrupo B', 300],
+        ['1002', 'Subgrupo A', 200],
+        ['1001', 'Subgrupo A', 100],
+    ] as [$terminal, $subgrupo, $monto]) {
+        CentroCosto::factory()->create(['id_viejo' => $terminal, 'id_sub_grupo' => $subgrupo]);
+        VentaUsuario::factory()->create(['agencia_id' => $terminal, 'tipo' => 'Tradicional', 'monto' => $monto, 'fecha' => '2026-10-01']);
+    }
+
+    $this->putJson(route('terminal.guardar-categorias-reporte'), [
+        'activas' => [
+            ['dimension' => 'subgrupo', 'valor' => 'Subgrupo A'],
+            ['dimension' => 'subgrupo', 'valor' => 'Subgrupo B'],
+        ],
+    ])->assertOk();
+
+    $this->getJson(route('reporte-subgrupos.datos', [
+        'desde' => '2026-10-01',
+        'hasta' => '2026-10-05',
+        'modo' => 'subgrupo',
+        'categoria' => '__todos__',
+        'por_terminal' => true,
+    ]))
+        ->assertOk()
+        ->assertJsonPath('filas.0.subgrupo', 'Subgrupo A')
+        ->assertJsonPath('filas.0.terminal', '1001')
+        ->assertJsonPath('filas.1.subgrupo', 'Subgrupo A')
+        ->assertJsonPath('filas.1.terminal', '1002')
+        ->assertJsonPath('filas.2.subgrupo', 'Subgrupo B');
+});

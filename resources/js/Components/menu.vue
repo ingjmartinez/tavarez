@@ -949,6 +949,9 @@ export default {
               <li class="nav-item">
                 <Link href="/reporte-subgrupos" class="nav-link">Ventas por subgrupo</Link>
               </li>
+              <li class="nav-item">
+                <Link href="/reporte-periodo" class="nav-link">Ventas por período</Link>
+              </li>
             </ul>
           </div>
           </li>

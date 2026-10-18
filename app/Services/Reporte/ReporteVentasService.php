@@ -66,7 +66,7 @@ class ReporteVentasService
      * @param  array<string, mixed>  $filtros
      * @return array<string, mixed>
      */
-    public function generar(string $desde, string $hasta, array $agrupar, array $filtros, ?string $dimensionSeleccionada = null, ?string $valorSeleccionado = null): array
+    public function generar(string $desde, string $hasta, array $agrupar, array $filtros, ?string $dimensionSeleccionada = null, ?string $valorSeleccionado = null, bool $ordenarPorAgrupacion = false): array
     {
         $catalogo = $this->terminales->catalogo(paraReporte: true, dimensionSeleccionada: $dimensionSeleccionada, valorSeleccionado: $valorSeleccionado);
         $seleccionActiva = $dimensionSeleccionada !== null || $this->categorias->activas() !== [];
@@ -180,9 +180,15 @@ class ReporteVentasService
                 'promedio' => round($fila['total_venta'] / count($fila['dias']), 2),
                 'clasificacion' => $this->clasificacion($fila['total_venta'] / count($fila['dias'])),
                 'promedios_por_tipo' => collect($fila['tipos'])->map(fn (float $monto, string $tipo): float => round($monto / count($fila['dias_por_tipo'][$tipo]), 2))->all(),
-            ])
-            ->sortByDesc('total_venta')
-            ->values();
+            ]);
+
+        $filas = ($ordenarPorAgrupacion
+            ? $filas->sort(function (array $primera, array $segunda) use ($dimensionSeleccionada): int {
+                $grupo = strnatcasecmp((string) ($primera[$dimensionSeleccionada] ?? ''), (string) ($segunda[$dimensionSeleccionada] ?? ''));
+
+                return $grupo !== 0 ? $grupo : strnatcasecmp((string) ($primera['terminal'] ?? ''), (string) ($segunda['terminal'] ?? ''));
+            })
+            : $filas->sortByDesc('total_venta'))->values();
 
         $tipos = array_values(array_filter(
             array_keys($totalesPorTipo),

@@ -4,6 +4,7 @@ use App\Http\Controllers\CentroCostoController;
 use App\Http\Controllers\PagosMismaEmpresaController;
 use App\Http\Controllers\PagosOtraEmpresaController;
 use App\Http\Controllers\ProcesarTodoController;
+use App\Http\Controllers\ReportePeriodoController;
 use App\Http\Controllers\ReporteSubgruposController;
 use App\Http\Controllers\ReporteVentasController;
 use App\Http\Controllers\TerminalController;
@@ -43,6 +44,11 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
     });
 
     Route::prefix('reporte-subgrupos')->name('reporte-subgrupos.')->controller(ReporteSubgruposController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/datos', 'datos')->name('datos');
+    });
+
+    Route::prefix('reporte-periodo')->name('reporte-periodo.')->controller(ReportePeriodoController::class)->group(function () {
         Route::get('/', 'index')->name('index');
         Route::get('/datos', 'datos')->name('datos');
     });
