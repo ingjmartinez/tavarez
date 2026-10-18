@@ -838,6 +838,9 @@ export default {
                       Ventas
                       </Link>
                     </li>
+                    <li class="nav-item">
+                      <Link href="/reporte-subgrupos" class="nav-link">Ventas por subgrupo</Link>
+                    </li>
                   </ul>
                 </div>
               </li>

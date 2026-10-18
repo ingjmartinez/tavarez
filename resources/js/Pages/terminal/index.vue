@@ -34,6 +34,12 @@ export default {
     PageHeader,
     Link,
   },
+  props: {
+    puedeConfigurarReportes: {
+      type: Boolean,
+      default: false,
+    },
+  },
   data() {
     return {
       terminales: [],
@@ -50,6 +56,14 @@ export default {
       detalleCargando: false,
       detalleError: "",
       modos: MODOS,
+      modalCategorias: false,
+      categorias: { grupo: [], subgrupo: [], division: [], sociedad: [] },
+      categoriaActual: "grupo",
+      busquedaCategoria: "",
+      cargandoCategorias: false,
+      guardandoCategorias: false,
+      errorCategorias: "",
+      dimensionesCategorias: { grupo: "Grupos", subgrupo: "Subgrupos", division: "Divisiones", sociedad: "Corporaciones" },
     };
   },
   computed: {
@@ -97,6 +111,13 @@ export default {
     coberturaIncompleta() {
       const cobertura = this.detalle?.cobertura;
       return Boolean(cobertura) && !cobertura.completa;
+    },
+    categoriasFiltradas() {
+      const term = this.busquedaCategoria.trim().toLowerCase();
+      return this.categorias[this.categoriaActual].filter((categoria) => categoria.valor.toLowerCase().includes(term));
+    },
+    totalCategoriasActivas() {
+      return Object.values(this.categorias).flat().filter((categoria) => categoria.activo).length;
     },
   },
   watch: {
@@ -159,6 +180,37 @@ export default {
     formatMonto(value) {
       return Number(value || 0).toLocaleString("es-DO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     },
+    async abrirCategorias() {
+      this.modalCategorias = true;
+      this.cargandoCategorias = true;
+      this.errorCategorias = "";
+      try {
+        const { data } = await axios.get(route("terminal.categorias-reporte"));
+        this.categorias = data.categorias;
+      } catch (error) {
+        this.errorCategorias = this.errorMessage(error);
+      } finally {
+        this.cargandoCategorias = false;
+      }
+    },
+    marcarCategoria(activo) {
+      this.categorias[this.categoriaActual].forEach((categoria) => { categoria.activo = activo; });
+    },
+    async guardarCategorias() {
+      this.guardandoCategorias = true;
+      this.errorCategorias = "";
+      const activas = Object.entries(this.categorias).flatMap(([dimension, categorias]) =>
+        categorias.filter((categoria) => categoria.activo).map((categoria) => ({ dimension, valor: categoria.valor })),
+      );
+      try {
+        await axios.put(route("terminal.guardar-categorias-reporte"), { activas });
+        this.modalCategorias = false;
+      } catch (error) {
+        this.errorCategorias = this.errorMessage(error);
+      } finally {
+        this.guardandoCategorias = false;
+      }
+    },
   },
 };
 </script>
@@ -171,7 +223,10 @@ export default {
         <BCard no-body>
           <BCardHeader class="d-flex align-items-center justify-content-between flex-wrap gap-2">
             <h5 class="card-title mb-0">Lista de terminales</h5>
-            <BButton size="sm" variant="primary" :disabled="cargando" @click="cargar">Actualizar</BButton>
+            <div class="d-flex gap-2">
+              <BButton v-if="puedeConfigurarReportes" size="sm" variant="outline-primary" @click="abrirCategorias">Grupo</BButton>
+              <BButton size="sm" variant="primary" :disabled="cargando" @click="cargar">Actualizar</BButton>
+            </div>
           </BCardHeader>
           <BCardBody>
             <div class="d-flex flex-wrap align-items-center gap-4 mb-3">
@@ -348,6 +403,47 @@ export default {
       <div class="small text-muted mt-2">
         Total de terminales en esta consulta: <strong>{{ (detalle?.total ?? 0).toLocaleString() }}</strong>
       </div>
+    </BModal>
+
+    <BModal v-model="modalCategorias" title="Categorías visibles en reportes" size="xl" scrollable hide-footer>
+      <p class="text-muted small mb-2">
+        Los reportes incluyen las terminales que coincidan con cualquier categoría marcada. Una corporación marcada incluye sus terminales aunque sus grupos no estén marcados.
+        Sin categorías marcadas, se muestran todas las terminales como antes.
+      </p>
+      <div v-if="errorCategorias" class="alert alert-danger py-2">{{ errorCategorias }}</div>
+      <div v-if="cargandoCategorias" class="text-muted py-4 text-center">Cargando categorías...</div>
+      <template v-else>
+        <div class="d-flex flex-wrap gap-2 mb-3">
+          <BButton
+            v-for="(label, dimension) in dimensionesCategorias"
+            :key="dimension"
+            size="sm"
+            :variant="categoriaActual === dimension ? 'primary' : 'outline-primary'"
+            @click="categoriaActual = dimension; busquedaCategoria = ''"
+          >
+            {{ label }} ({{ categorias[dimension].filter((item) => item.activo).length }})
+          </BButton>
+        </div>
+        <div class="d-flex align-items-center gap-2 mb-2 flex-wrap">
+          <input v-model="busquedaCategoria" type="search" class="form-control form-control-sm" style="max-width: 300px" placeholder="Buscar categoría..." />
+          <BButton size="sm" variant="outline-secondary" @click="marcarCategoria(true)">Marcar todas</BButton>
+          <BButton size="sm" variant="outline-secondary" @click="marcarCategoria(false)">Desmarcar todas</BButton>
+          <span class="text-muted small ms-auto">{{ totalCategoriasActivas }} categorías marcadas</span>
+        </div>
+        <div class="border rounded p-2 overflow-auto" style="max-height: 360px">
+          <div v-for="categoria in categoriasFiltradas" :key="categoria.valor" class="form-check py-1">
+            <input :id="`categoria-${categoriaActual}-${categoria.valor}`" v-model="categoria.activo" type="checkbox" class="form-check-input" />
+            <label :for="`categoria-${categoriaActual}-${categoria.valor}`" class="form-check-label">{{ categoria.valor }}</label>
+          </div>
+          <div v-if="!categoriasFiltradas.length" class="text-muted text-center py-3">No hay categorías para mostrar.</div>
+        </div>
+        <div class="d-flex justify-content-end gap-2 mt-3">
+          <BButton variant="light" :disabled="guardandoCategorias" @click="modalCategorias = false">Cancelar</BButton>
+          <BButton variant="primary" :disabled="guardandoCategorias" @click="guardarCategorias">
+            {{ guardandoCategorias ? "Guardando..." : "Guardar" }}
+          </BButton>
+        </div>
+      </template>
     </BModal>
   </Layout>
 </template>

@@ -4,7 +4,9 @@ namespace App\Services\Terminal;
 
 use App\Models\CentroCosto;
 use App\Models\VentaUsuario;
+use App\Services\Reporte\ReporteCategoriasService;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Reglas aplicadas:
@@ -19,11 +21,22 @@ class TerminalService
 {
     public const DIAS_PERIODO = 30;
 
+    public function __construct(private ReporteCategoriasService $categorias) {}
+
     public function terminalKey(mixed $value): string
     {
         $key = ltrim(trim((string) $value), '0');
 
         return $key === '' ? '0' : $key;
+    }
+
+    private function terminalKeyExpression(): string
+    {
+        if (DB::getDriverName() === 'sqlite') {
+            return "COALESCE(NULLIF(LTRIM(TRIM(agencia_id), '0'), ''), '0')";
+        }
+
+        return "COALESCE(NULLIF(TRIM(LEADING '0' FROM TRIM(agencia_id)), ''), '0')";
     }
 
     /**
@@ -42,13 +55,19 @@ class TerminalService
      *
      * @return Collection<string, array<string, mixed>>
      */
-    public function catalogo(): Collection
+    public function catalogo(bool $paraReporte = false, ?string $dimensionSeleccionada = null, ?string $valorSeleccionado = null): Collection
     {
+        $activas = ($paraReporte || $dimensionSeleccionada !== null) ? $this->categorias->activas() : [];
+
         return CentroCosto::query()
             ->whereNotNull('id_viejo')
             ->whereRaw("TRIM(id_viejo) <> ''")
             ->orderBy('id_centro_costo')
             ->get(['id_centro_costo', 'id_viejo', 'descripcion', 'id_grupo', 'id_sub_grupo', 'id_division', 'id_sociedad', 'inactivo'])
+            ->filter(fn (CentroCosto $centro): bool => $dimensionSeleccionada !== null
+                ? ($valorSeleccionado === null || $centro->{ReporteCategoriasService::DIMENSIONES[$dimensionSeleccionada]} === $valorSeleccionado)
+                    && isset($activas[$dimensionSeleccionada][$centro->{ReporteCategoriasService::DIMENSIONES[$dimensionSeleccionada]}])
+                : (! $paraReporte || $this->categorias->centroVisible($centro, $activas)))
             ->groupBy(fn (CentroCosto $centro) => $this->terminalKey($centro->id_viejo))
             ->reject(fn (Collection $grupo, string $key) => $key === '0')
             ->map(function (Collection $grupo): array {
@@ -74,10 +93,10 @@ class TerminalService
     public function ventasPorTerminal(string $desde, string $hasta): Collection
     {
         return VentaUsuario::query()
-            ->whereBetween('fecha', [$desde, $hasta])
+            ->whereBetween('fecha', [$desde, $hasta.' 23:59:59'])
             ->where('monto', '>', 0)
             ->whereNotNull('agencia_id')
-            ->selectRaw("COALESCE(NULLIF(TRIM(LEADING '0' FROM TRIM(agencia_id)), ''), '0') AS terminal_key")
+            ->selectRaw($this->terminalKeyExpression().' AS terminal_key')
             ->selectRaw('COUNT(DISTINCT fecha) AS dias_con_venta')
             ->selectRaw('MAX(fecha) AS ultima_fecha')
             ->selectRaw('SUM(monto) AS total_venta')
@@ -101,7 +120,7 @@ class TerminalService
     public function cobertura(string $desde, string $hasta): array
     {
         $diasConDatos = VentaUsuario::query()
-            ->whereBetween('fecha', [$desde, $hasta])
+            ->whereBetween('fecha', [$desde, $hasta.' 23:59:59'])
             ->distinct()
             ->count('fecha');
 

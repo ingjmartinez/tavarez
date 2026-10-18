@@ -24,6 +24,7 @@ export default {
       hasta: iso(hoy),
       agrupar: ["terminal"],
       incluirRaza: false,
+      incluirClasificacion: false,
       filtros: { grupo: "", subgrupo: "", division: "", sociedad: "", tipo: "", estatus: "todos", buscar: "" },
       opciones: { grupos: [], subgrupos: [], divisiones: [], sociedades: [], tipos: [] },
       resultado: null,
@@ -40,7 +41,11 @@ export default {
       }
       return this.resultado.agrupar.flatMap((key) =>
         key === "terminal"
-          ? [{ key: "terminal", label: this.dimensiones.terminal }, { key: "nombre", label: "Nombre" }]
+          ? [
+              { key: "terminal", label: this.dimensiones.terminal },
+              { key: "nombre", label: "Nombre" },
+              ...(this.incluirClasificacion ? [{ key: "clasificacion", label: "Clasificación" }] : []),
+            ]
           : [{ key, label: this.dimensiones[key] ?? "Detalle" }],
       );
     },
@@ -186,6 +191,10 @@ export default {
                   <div class="form-check">
                     <input id="incluir-raza" v-model="incluirRaza" type="checkbox" class="form-check-input" />
                     <label for="incluir-raza" class="form-check-label">Ventas raza</label>
+                  </div>
+                  <div class="form-check">
+                    <input id="incluir-clasificacion" v-model="incluirClasificacion" type="checkbox" class="form-check-input" :disabled="!agrupar.includes('terminal')" />
+                    <label for="incluir-clasificacion" class="form-check-label">Clasificación</label>
                   </div>
                 </div>
               </BCol>

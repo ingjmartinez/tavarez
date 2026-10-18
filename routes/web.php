@@ -4,6 +4,7 @@ use App\Http\Controllers\CentroCostoController;
 use App\Http\Controllers\PagosMismaEmpresaController;
 use App\Http\Controllers\PagosOtraEmpresaController;
 use App\Http\Controllers\ProcesarTodoController;
+use App\Http\Controllers\ReporteSubgruposController;
 use App\Http\Controllers\ReporteVentasController;
 use App\Http\Controllers\TerminalController;
 use App\Http\Controllers\VelzonRoutesController;
@@ -41,8 +42,15 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
         Route::get('/datos', 'datos')->name('datos');
     });
 
+    Route::prefix('reporte-subgrupos')->name('reporte-subgrupos.')->controller(ReporteSubgruposController::class)->group(function () {
+        Route::get('/', 'index')->name('index');
+        Route::get('/datos', 'datos')->name('datos');
+    });
+
     Route::prefix('mantenimiento-terminal')->name('terminal.')->controller(TerminalController::class)->group(function () {
         Route::get('/', 'index')->name('index');
+        Route::get('/categorias-reporte', 'categoriasReporte')->name('categorias-reporte')->middleware('can:configurar-reportes');
+        Route::put('/categorias-reporte', 'guardarCategoriasReporte')->name('guardar-categorias-reporte')->middleware('can:configurar-reportes');
         Route::get('/resumen', 'resumen')->name('resumen');
         Route::get('/inactivas', 'inactivas')->name('inactivas');
         Route::get('/sin-venta-30-dias', 'sinVentaTreintaDias')->name('sin-venta-30-dias');

@@ -24,6 +24,8 @@ class ReporteVentasService
 
     public const ETIQUETA_USUARIOS = 'Ventas usuario';
 
+    public const TIPOS_PRODUCTO = ['No Tradicional', 'Recarga', 'Tradicional'];
+
     /**
      * @var array<string, string>
      */
@@ -38,7 +40,7 @@ class ReporteVentasService
         'fecha' => 'Fecha',
     ];
 
-    public function __construct(private TerminalService $terminales) {}
+    public function __construct(private TerminalService $terminales, private ReporteCategoriasService $categorias) {}
 
     /**
      * Valores disponibles para los filtros, tomados del catalogo de terminales y de las ventas.
@@ -47,7 +49,7 @@ class ReporteVentasService
      */
     public function opcionesFiltros(): array
     {
-        $catalogo = $this->terminales->catalogo();
+        $catalogo = $this->terminales->catalogo(paraReporte: true);
         $distintos = fn (string $campo): array => $catalogo->pluck($campo)->filter()->unique()->sort(fn (string $a, string $b) => strnatcasecmp($a, $b))->values()->all();
 
         return [
@@ -55,7 +57,7 @@ class ReporteVentasService
             'subgrupos' => $distintos('subgrupo'),
             'divisiones' => $distintos('division'),
             'sociedades' => $distintos('sociedad'),
-            'tipos' => VentaUsuario::query()->whereNotNull('tipo')->distinct()->orderBy('tipo')->pluck('tipo')->all(),
+            'tipos' => VentaUsuario::query()->whereIn('tipo', self::TIPOS_PRODUCTO)->distinct()->orderBy('tipo')->pluck('tipo')->all(),
         ];
     }
 
@@ -64,15 +66,17 @@ class ReporteVentasService
      * @param  array<string, mixed>  $filtros
      * @return array<string, mixed>
      */
-    public function generar(string $desde, string $hasta, array $agrupar, array $filtros): array
+    public function generar(string $desde, string $hasta, array $agrupar, array $filtros, ?string $dimensionSeleccionada = null, ?string $valorSeleccionado = null): array
     {
-        $catalogo = $this->terminales->catalogo();
+        $catalogo = $this->terminales->catalogo(paraReporte: true, dimensionSeleccionada: $dimensionSeleccionada, valorSeleccionado: $valorSeleccionado);
+        $seleccionActiva = $dimensionSeleccionada !== null || $this->categorias->activas() !== [];
         $porTipo = in_array('tipo', $agrupar, true);
         $incluirRaza = ! empty($filtros['raza']);
         $pivotear = $porTipo || $incluirRaza;
 
         $query = VentaUsuario::query()
             ->whereBetween('fecha', [$desde, $hasta])
+            ->whereIn('tipo', self::TIPOS_PRODUCTO)
             ->whereNotNull('agencia_id')
             ->selectRaw($this->terminalKeyExpression().' AS terminal_key')
             ->selectRaw('SUM(monto) AS total_venta')
@@ -103,7 +107,7 @@ class ReporteVentasService
         $totalVenta = 0.0;
         $totalRegistros = 0;
 
-        $acumular = function (iterable $rows, callable $etiquetaTipo) use ($catalogo, $filtros, $dimensiones, $pivotear, &$acumulado, &$totalesPorTipo, &$terminalesTotales, &$diasTotales, &$diasPorTipo, &$totalVenta, &$totalRegistros): void {
+        $acumular = function (iterable $rows, callable $etiquetaTipo) use ($catalogo, $seleccionActiva, $filtros, $dimensiones, $pivotear, &$acumulado, &$totalesPorTipo, &$terminalesTotales, &$diasTotales, &$diasPorTipo, &$totalVenta, &$totalRegistros): void {
             foreach ($rows as $row) {
                 $key = (string) $row->terminal_key;
 
@@ -112,6 +116,10 @@ class ReporteVentasService
                 }
 
                 $info = $catalogo->get($key);
+
+                if ($seleccionActiva && $info === null) {
+                    continue;
+                }
 
                 if (! $this->pasaFiltros($key, $info, $filtros)) {
                     continue;
@@ -170,12 +178,16 @@ class ReporteVentasService
                 'total_venta' => round($fila['total_venta'], 2),
                 'tipos' => array_map(fn (float $monto): float => round($monto, 2), $fila['tipos']),
                 'promedio' => round($fila['total_venta'] / count($fila['dias']), 2),
+                'clasificacion' => $this->clasificacion($fila['total_venta'] / count($fila['dias'])),
                 'promedios_por_tipo' => collect($fila['tipos'])->map(fn (float $monto, string $tipo): float => round($monto / count($fila['dias_por_tipo'][$tipo]), 2))->all(),
             ])
             ->sortByDesc('total_venta')
             ->values();
 
-        $tipos = array_keys($totalesPorTipo);
+        $tipos = array_values(array_filter(
+            array_keys($totalesPorTipo),
+            fn (string $tipo): bool => $filas->contains(fn (array $fila): bool => ($fila['tipos'][$tipo] ?? 0.0) != 0.0),
+        ));
         usort($tipos, 'strnatcasecmp');
 
         if (in_array(self::ETIQUETA_RAZA, $tipos, true)) {
@@ -213,6 +225,16 @@ class ReporteVentasService
         }
 
         return "COALESCE(NULLIF(TRIM(LEADING '0' FROM TRIM(agencia_id)), ''), '0')";
+    }
+
+    private function clasificacion(float $promedio): string
+    {
+        return match (true) {
+            $promedio >= 12500 => 'A',
+            $promedio >= 10000 => 'B',
+            $promedio >= 6500 => 'C',
+            default => 'D',
+        };
     }
 
     private function consultaRaza(string $desde, string $hasta): Builder
@@ -292,7 +314,7 @@ class ReporteVentasService
     private function cobertura(string $desde, string $hasta): array
     {
         return [
-            'dias_con_datos' => VentaUsuario::query()->whereBetween('fecha', [$desde, $hasta])->distinct()->count('fecha'),
+            'dias_con_datos' => VentaUsuario::query()->whereBetween('fecha', [$desde, $hasta])->whereIn('tipo', self::TIPOS_PRODUCTO)->distinct()->count('fecha'),
             'dias_rango' => (int) (new \DateTime($desde))->diff(new \DateTime($hasta))->days + 1,
         ];
     }

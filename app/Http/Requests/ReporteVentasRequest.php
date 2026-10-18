@@ -28,7 +28,7 @@ class ReporteVentasRequest extends FormRequest
             'subgrupo' => ['nullable', 'string', 'max:150'],
             'division' => ['nullable', 'string', 'max:150'],
             'sociedad' => ['nullable', 'string', 'max:150'],
-            'tipo' => ['nullable', 'string', 'max:45'],
+            'tipo' => ['nullable', 'string', Rule::in(ReporteVentasService::TIPOS_PRODUCTO)],
             'estatus' => ['nullable', Rule::in(['todos', 'activas', 'inactivas'])],
             'buscar' => ['nullable', 'string', 'max:60'],
             'raza' => ['nullable', 'boolean'],

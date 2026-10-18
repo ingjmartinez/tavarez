@@ -2,18 +2,35 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Requests\GuardarReporteCategoriasRequest;
+use App\Services\Reporte\ReporteCategoriasService;
 use App\Services\Terminal\TerminalService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Gate;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class TerminalController extends Controller
 {
-    public function __construct(private TerminalService $service) {}
+    public function __construct(private TerminalService $service, private ReporteCategoriasService $categorias) {}
 
     public function index(): Response
     {
-        return Inertia::render('terminal/index');
+        return Inertia::render('terminal/index', [
+            'puedeConfigurarReportes' => Gate::allows('configurar-reportes'),
+        ]);
+    }
+
+    public function categoriasReporte(): JsonResponse
+    {
+        return response()->json(['categorias' => $this->categorias->opciones()]);
+    }
+
+    public function guardarCategoriasReporte(GuardarReporteCategoriasRequest $request): JsonResponse
+    {
+        $this->categorias->guardar($request->validated('activas'));
+
+        return response()->json(['message' => 'Categorias del reporte guardadas correctamente.']);
     }
 
     /**
