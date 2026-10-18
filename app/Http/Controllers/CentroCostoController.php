@@ -62,36 +62,44 @@ class CentroCostoController extends Controller
             ]);
 
         $now = now();
-        $paraGuardar = [];
+        $total = count($rows);
         $nuevos = 0;
         $actualizados = 0;
 
-        foreach ($rows as $row) {
-            $id = (int) ($row['IdCentroCosto'] ?? 0);
-            $stamp = $this->service->changeStamp($row['FechaModificado'] ?? null, $row['FechaGrabado'] ?? null);
+        DB::transaction(function () use (&$rows, $total, $empresaId, $existentes, $now, &$nuevos, &$actualizados) {
+            for ($offset = 0; $offset < $total; $offset += 1000) {
+                $paraGuardar = [];
 
-            if (! $existentes->has($id)) {
-                $nuevos++;
-            } elseif ($existentes->get($id) !== $stamp) {
-                $actualizados++;
-            } else {
-                continue;
-            }
+                foreach (array_slice($rows, $offset, 1000) as $row) {
+                    $id = (int) ($row['IdCentroCosto'] ?? 0);
+                    $stamp = $this->service->changeStamp($row['FechaModificado'] ?? null, $row['FechaGrabado'] ?? null);
 
-            $paraGuardar[] = $this->service->mapRow($row, $empresaId) + ['created_at' => $now, 'updated_at' => $now];
-        }
+                    if (! $existentes->has($id)) {
+                        $nuevos++;
+                    } elseif ($existentes->get($id) !== $stamp) {
+                        $actualizados++;
+                    } else {
+                        continue;
+                    }
 
-        DB::transaction(function () use ($paraGuardar) {
-            foreach (array_chunk($paraGuardar, 300) as $chunk) {
+                    $paraGuardar[] = $this->service->mapRow($row, $empresaId) + ['created_at' => $now, 'updated_at' => $now];
+                }
+
+                if ($paraGuardar === []) {
+                    continue;
+                }
+
                 CentroCosto::query()->upsert(
-                    $chunk,
+                    $paraGuardar,
                     ['empresa_id', 'id_centro_costo'],
-                    array_diff(array_keys($chunk[0]), ['empresa_id', 'id_centro_costo', 'created_at']),
+                    array_diff(array_keys($paraGuardar[0]), ['empresa_id', 'id_centro_costo', 'created_at']),
                 );
+                unset($paraGuardar);
             }
         });
+        unset($rows);
 
-        $sinCambios = count($rows) - $nuevos - $actualizados;
+        $sinCambios = $total - $nuevos - $actualizados;
         $sincronizadoEn = $now->toDateTimeString();
         Cache::forever($this->syncCacheKey($empresaId), $sincronizadoEn);
 

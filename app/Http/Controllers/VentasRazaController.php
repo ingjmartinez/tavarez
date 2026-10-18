@@ -55,20 +55,24 @@ class VentasRazaController extends Controller
         }
 
         $now = now();
-        $data = array_map(
-            fn (array $row) => $this->service->mapVentaRazaRow($row, $fecha) + ['created_at' => $now, 'updated_at' => $now],
-            $rows,
-        );
+        $total = count($rows);
 
-        DB::transaction(function () use ($data) {
-            foreach (array_chunk($data, 1000) as $chunk) {
-                VentaRaza::query()->insert($chunk);
+        DB::transaction(function () use (&$rows, $total, $fecha, $now) {
+            for ($offset = 0; $offset < $total; $offset += 1000) {
+                $chunk = array_slice($rows, $offset, 1000);
+                $data = array_map(
+                    fn (array $row) => $this->service->mapVentaRazaRow($row, $fecha) + ['created_at' => $now, 'updated_at' => $now],
+                    $chunk,
+                );
+                VentaRaza::query()->insert($data);
+                unset($chunk, $data);
             }
         });
+        unset($rows);
 
         return response()->json([
-            'message' => 'Datos guardados correctamente. Total insertados: '.count($data),
-            'total' => count($data),
+            'message' => 'Datos guardados correctamente. Total insertados: '.$total,
+            'total' => $total,
         ]);
     }
 
