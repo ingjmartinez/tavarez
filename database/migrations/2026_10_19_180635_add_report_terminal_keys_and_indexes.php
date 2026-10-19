@@ -27,12 +27,25 @@ return new class extends Migration
             return;
         }
 
-        DB::statement("ALTER TABLE ventas_usuarios ADD COLUMN terminal_key VARCHAR(25) COLLATE utf8mb4_unicode_ci GENERATED ALWAYS AS (COALESCE(NULLIF(TRIM(LEADING '0' FROM TRIM(agencia_id)), ''), '0')) VIRTUAL, ALGORITHM=INSTANT");
-        DB::statement('ALTER TABLE ventas_usuarios ADD INDEX ventas_usuarios_terminal_reporte_index (terminal_key, fecha, tipo, monto), ALGORITHM=INPLACE, LOCK=NONE');
-        DB::statement('ALTER TABLE ventas_usuarios ADD INDEX ventas_usuarios_tipo_fecha_index (tipo, fecha), ALGORITHM=INPLACE, LOCK=NONE');
+        if (! Schema::hasColumn('ventas_usuarios', 'terminal_key')) {
+            DB::statement("ALTER TABLE ventas_usuarios ADD COLUMN terminal_key VARCHAR(25) COLLATE utf8mb4_unicode_ci GENERATED ALWAYS AS (COALESCE(NULLIF(TRIM(LEADING '0' FROM TRIM(agencia_id)), ''), '0')) VIRTUAL, ALGORITHM=INPLACE, LOCK=NONE");
+        }
 
-        DB::statement("ALTER TABLE ventas_raza ADD COLUMN terminal_key VARCHAR(25) COLLATE utf8mb4_unicode_ci GENERATED ALWAYS AS (COALESCE(NULLIF(TRIM(LEADING '0' FROM TRIM(agencia_id)), ''), '0')) VIRTUAL, ALGORITHM=INSTANT");
-        DB::statement('ALTER TABLE ventas_raza ADD INDEX ventas_raza_terminal_reporte_index (terminal_key, fecha, ventas), ALGORITHM=INPLACE, LOCK=NONE');
+        if (! Schema::hasIndex('ventas_usuarios', 'ventas_usuarios_terminal_reporte_index')) {
+            DB::statement('ALTER TABLE ventas_usuarios ADD INDEX ventas_usuarios_terminal_reporte_index (terminal_key, fecha, tipo, monto), ALGORITHM=INPLACE, LOCK=NONE');
+        }
+
+        if (! Schema::hasIndex('ventas_usuarios', 'ventas_usuarios_tipo_fecha_index')) {
+            DB::statement('ALTER TABLE ventas_usuarios ADD INDEX ventas_usuarios_tipo_fecha_index (tipo, fecha), ALGORITHM=INPLACE, LOCK=NONE');
+        }
+
+        if (! Schema::hasColumn('ventas_raza', 'terminal_key')) {
+            DB::statement("ALTER TABLE ventas_raza ADD COLUMN terminal_key VARCHAR(25) COLLATE utf8mb4_unicode_ci GENERATED ALWAYS AS (COALESCE(NULLIF(TRIM(LEADING '0' FROM TRIM(agencia_id)), ''), '0')) VIRTUAL, ALGORITHM=INPLACE, LOCK=NONE");
+        }
+
+        if (! Schema::hasIndex('ventas_raza', 'ventas_raza_terminal_reporte_index')) {
+            DB::statement('ALTER TABLE ventas_raza ADD INDEX ventas_raza_terminal_reporte_index (terminal_key, fecha, ventas), ALGORITHM=INPLACE, LOCK=NONE');
+        }
     }
 
     /**
