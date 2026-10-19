@@ -3,6 +3,7 @@ import Layout from "@/Layouts/main.vue";
 import PageHeader from "@/Components/page-header.vue";
 import axios from "axios";
 import Swal from "sweetalert2";
+import { descargarExcel, descargarPdf, tablasPeriodo } from "@/reporte-export.js";
 
 export default {
   components: { Layout, PageHeader },
@@ -101,6 +102,17 @@ export default {
     busqueda() { this.page = 1; },
   },
   methods: {
+    async exportar(formato) {
+      if (!this.resultado) return;
+      const tablas = tablasPeriodo(this.resultado, this.nombreDimension, this.resultado.filas, "Ventas por período");
+      const nombre = `ventas-periodo-${tablas.excel.periodo.replaceAll(" a ", "-")}`;
+      try {
+        if (formato === "excel") descargarExcel(tablas.excel, nombre);
+        else await descargarPdf(tablas.pdf, nombre);
+      } catch (error) {
+        Swal.fire({ title: "Error", text: "No se pudo exportar el reporte.", icon: "error" });
+      }
+    },
     formatMonto(valor) {
       return Number(valor || 0).toLocaleString("es-DO", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     },
@@ -223,6 +235,10 @@ export default {
                   </select>
                 </div>
                 <input v-model="busqueda" type="search" class="form-control form-control-sm w-auto" :placeholder="`Buscar ${nombreDimension.toLowerCase()} o terminal...`" aria-label="Buscar en el resultado" />
+              </div>
+              <div class="d-flex gap-2 mb-2">
+                <BButton size="sm" variant="success" @click="exportar('excel')">Exportar Excel</BButton>
+                <BButton size="sm" variant="danger" @click="exportar('pdf')">Exportar PDF</BButton>
               </div>
               <div class="table-responsive">
                 <table class="table table-bordered table-striped align-middle table-sm mb-0 text-nowrap periodo-table">
