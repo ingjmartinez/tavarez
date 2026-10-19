@@ -180,3 +180,45 @@ test('grouped months preserve the totals and types of separate months', function
         ->and($agrupado['meses'][0]['totales']['registros'])->toBe(4)
         ->and($agrupado['meses'][0]['cobertura'])->toBe(['dias_con_datos' => 2, 'dias_rango' => 61]);
 });
+
+test('period report preserves totals with grouping and terminal detail', function (bool $agruparMeses, bool $porTerminal) {
+    $this->actingAs(User::factory()->create());
+    CentroCosto::factory()->create(['id_viejo' => '008284636', 'id_sub_grupo' => '18-Romana']);
+    CentroCosto::factory()->create(['id_viejo' => '1002', 'id_sub_grupo' => '34-Nagua']);
+
+    foreach ([['2026-08-10', 20], ['2026-09-10', 30]] as [$fecha, $monto]) {
+        VentaUsuario::factory()->create(['agencia_id' => '8284636', 'tipo' => 'Tradicional', 'monto' => $monto, 'fecha' => $fecha]);
+        VentaRaza::factory()->create(['agencia_id' => '08284636', 'ventas' => 5, 'fecha' => $fecha]);
+        VentaUsuario::factory()->create(['agencia_id' => '1002', 'tipo' => 'Tradicional', 'monto' => 100, 'fecha' => $fecha]);
+    }
+
+    $this->putJson(route('terminal.guardar-categorias-reporte'), [
+        'activas' => [['dimension' => 'subgrupo', 'valor' => '18-Romana']],
+    ])->assertOk();
+
+    $resultado = $this->getJson(route('reporte-periodo.datos', [
+        'desde' => '2026-08-01',
+        'hasta' => '2026-09-30',
+        'modo' => 'subgrupo',
+        'categoria' => '18-Romana',
+        'por_terminal' => (int) $porTerminal,
+        'agrupar_meses' => (int) $agruparMeses,
+    ]))->assertOk()->json();
+
+    expect($resultado['total_venta'])->toBe(60)
+        ->and($resultado['total_filas'])->toBe(1)
+        ->and($resultado['tipos'])->toBe(['Tradicional', 'Raza'])
+        ->and($resultado['meses'])->toHaveCount($agruparMeses ? 1 : 2);
+
+    if ($agruparMeses) {
+        expect($resultado['filas'][0]['meses']['periodo']['tipos'])->toBe(['Tradicional' => 50, 'Raza' => 10]);
+    } else {
+        expect($resultado['filas'][0]['meses']['2026-08']['tipos'])->toBe(['Tradicional' => 20, 'Raza' => 5])
+            ->and($resultado['filas'][0]['meses']['2026-09']['tipos'])->toBe(['Tradicional' => 30, 'Raza' => 5]);
+    }
+})->with([
+    'monthly summary' => [false, false],
+    'monthly terminals' => [false, true],
+    'combined summary' => [true, false],
+    'combined terminals' => [true, true],
+]);

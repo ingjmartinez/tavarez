@@ -4,6 +4,15 @@ use App\Models\CentroCosto;
 use App\Models\User;
 use App\Models\VentaRaza;
 use App\Models\VentaUsuario;
+use Illuminate\Support\Facades\DB;
+
+test('generated terminal keys normalize leading zeroes for both sales tables', function () {
+    VentaUsuario::factory()->create(['agencia_id' => '008284636', 'tipo' => 'Tradicional', 'fecha' => '2026-08-10']);
+    VentaRaza::factory()->create(['agencia_id' => '008284636', 'fecha' => '2026-08-10']);
+
+    expect(DB::table('ventas_usuarios')->value('terminal_key'))->toBe('8284636')
+        ->and(DB::table('ventas_raza')->value('terminal_key'))->toBe('8284636');
+});
 
 test('daily averages use sale days separately for each product type and raza', function () {
     $this->actingAs(User::factory()->create());

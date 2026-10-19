@@ -7,7 +7,6 @@ use App\Models\VentaUsuario;
 use App\Services\Terminal\TerminalService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
 
 /**
  * Reporte de ventas por periodo. Las ventas (ventas_usuarios) se relacionan con el catalogo de
@@ -82,8 +81,8 @@ class ReporteVentasService
         $query = VentaUsuario::query()
             ->whereBetween('fecha', [$desde, $hasta])
             ->whereIn('tipo', self::TIPOS_PRODUCTO)
-            ->whereNotNull('agencia_id')
-            ->selectRaw($this->terminalKeyExpression().' AS terminal_key')
+            ->where('terminal_key', '<>', '0')
+            ->addSelect('terminal_key')
             ->selectRaw('SUM(monto) AS total_venta')
             ->selectRaw('COUNT(*) AS registros')
             ->groupBy('terminal_key');
@@ -99,7 +98,7 @@ class ReporteVentasService
         $query->addSelect('fecha')->groupBy('fecha');
 
         if ($terminalesSeleccionadas !== null) {
-            $query->whereIn(DB::raw($this->terminalKeyExpression()), $terminalesSeleccionadas);
+            $query->whereIn('terminal_key', $terminalesSeleccionadas);
         }
 
         $dimensiones = array_values(array_diff($agrupar, ['tipo']));
@@ -179,7 +178,7 @@ class ReporteVentasService
             $queryRaza = $this->consultaRaza($desde, $hasta);
 
             if ($terminalesSeleccionadas !== null) {
-                $queryRaza->whereIn(DB::raw($this->terminalKeyExpression()), $terminalesSeleccionadas);
+                $queryRaza->whereIn('terminal_key', $terminalesSeleccionadas);
             }
 
             $acumular($queryRaza->toBase()->cursor(), fn (): string => self::ETIQUETA_RAZA);
@@ -236,18 +235,6 @@ class ReporteVentasService
         ];
     }
 
-    /**
-     * Solo el campo `ventas` de ventas raza; premios y premios pagados no se incluyen.
-     */
-    private function terminalKeyExpression(): string
-    {
-        if (DB::getDriverName() === 'sqlite') {
-            return "COALESCE(NULLIF(LTRIM(TRIM(agencia_id), '0'), ''), '0')";
-        }
-
-        return "COALESCE(NULLIF(TRIM(LEADING '0' FROM TRIM(agencia_id)), ''), '0')";
-    }
-
     private function clasificacion(float $promedio): string
     {
         foreach (self::CLASIFICACION_UMBRALES as $letra => $minimo) {
@@ -291,8 +278,8 @@ class ReporteVentasService
     {
         $query = VentaRaza::query()
             ->whereBetween('fecha', [$desde, $hasta])
-            ->whereNotNull('agencia_id')
-            ->selectRaw($this->terminalKeyExpression().' AS terminal_key')
+            ->where('terminal_key', '<>', '0')
+            ->addSelect('terminal_key')
             ->selectRaw('SUM(ventas) AS total_venta')
             ->selectRaw('COUNT(*) AS registros')
             ->groupBy('terminal_key');
