@@ -878,41 +878,7 @@ export default {
                 </span>
               </span>
             </template>
-            <!--
-              Opciones del menu de usuario ocultas (Profile, API Tokens, Messages,
-              Taskboard, Help, Balance, Settings, Lock screen). Se conservan por si se
-              necesitan de nuevo: quitar este comentario para reactivarlas.
-            <h6 class="dropdown-header">Welcome {{ $page.props.auth.user.name }}!</h6>
-            <Link class="dropdown-item" :href="route('profile.show')"><i class="mdi mdi-account-circle text-muted fs-16 align-middle me-1"></i>
-            <span class="align-middle">Profile</span>
-            </Link>
-            <Link class="dropdown-item" v-if="$page.props.jetstream.hasApiFeatures" :href="route('api-tokens.index')"><i class="mdi mdi-key-variant text-muted fs-16 align-middle me-1"></i>
-            <span class="align-middle"> API Tokens</span>
-            </Link>
-            <div class="dropdown-divider"></div>
-            <Link class="dropdown-item" href="/chat">
-            <i class=" mdi mdi-message-text-outline text-muted fs-16 align-middle me-1"></i>
-            <span class="align-middle"> Messages</span>
-            </Link>
-            <Link class="dropdown-item" href="/apps/tasks-kanban">
-            <i class="mdi mdi-calendar-check-outline text-muted fs-16 align-middle me-1"></i>
-            <span class="align-middle"> Taskboard</span>
-            </Link>
-            <Link class="dropdown-item" href="/pages/faqs"><i class="mdi mdi-lifebuoy text-muted fs-16 align-middle me-1"></i>
-            <span class="align-middle"> Help</span>
-            </Link>
-            <div class="dropdown-divider"></div>
-            <Link class="dropdown-item" href="/pages/profile"><i class="mdi mdi-wallet text-muted fs-16 align-middle me-1"></i>
-            <span class="align-middle"> Balance : <b>$5971.67</b></span>
-            </Link>
-            <Link class="dropdown-item" href="/pages/profile-setting">
-            <BBadge variant="success-subtle" class="bg-success-subtle text-success mt-1 float-end">New</BBadge><i class="mdi mdi-cog-outline text-muted fs-16 align-middle me-1"></i>
-            <span class="align-middle"> Settings</span>
-            </Link>
-            <Link class="dropdown-item" href="/auth/lockscreen-basic"><i class="mdi mdi-lock text-muted fs-16 align-middle me-1"></i>
-            <span class="align-middle"> Lock screen</span>
-            </Link>
-            -->
+
 
             <!-- Authentication -->
             <form method="POST" @submit.prevent="logout" class="dropdown-item">

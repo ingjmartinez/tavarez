@@ -2,10 +2,7 @@
 import { Head } from '@inertiajs/vue3';
 import Layout from "@/Layouts/main.vue";
 
-/**
- * Pagina principal en blanco.
- * El dashboard original de la plantilla sigue en ./ecommerce (sin uso) por si se necesita.
- */
+/** Pagina principal en blanco. */
 export default {
   components: {
     Layout,
