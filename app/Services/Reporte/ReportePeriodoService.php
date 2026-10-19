@@ -19,7 +19,7 @@ class ReportePeriodoService
     /**
      * @return array<string, mixed>
      */
-    public function generar(string $desde, string $hasta, string $modo, ?string $categoria, bool $porTerminal, bool $agruparMeses): array
+    public function generar(string $desde, string $hasta, string $modo, ?string $categoria, bool $porTerminal, bool $agruparMeses, ?array $categorias = null): array
     {
         $inicio = new DateTimeImmutable($desde);
         $fin = new DateTimeImmutable($hasta);
@@ -66,6 +66,7 @@ class ReportePeriodoService
                 ['raza' => true],
                 dimensionSeleccionada: $modo,
                 valorSeleccionado: $categoria,
+                valoresSeleccionados: $categorias,
                 ordenarPorAgrupacion: $porTerminal,
             );
 

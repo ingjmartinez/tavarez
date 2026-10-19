@@ -18,7 +18,8 @@ export default {
       mesDesde: mesClave(new Date(hoy.getFullYear(), hoy.getMonth() - 1, 1)),
       mesHasta: mesClave(hoy),
       modo: "subgrupo",
-      categoria: "",
+      categoriasSeleccionadas: [],
+      todasCategorias: false,
       porTerminal: false,
       agruparMeses: false,
       resultado: null,
@@ -94,14 +95,27 @@ export default {
   watch: {
     mesDesde() { this.resultado = null; },
     mesHasta() { this.resultado = null; },
-    modo() { this.categoria = ""; this.resultado = null; this.ordenMes = null; },
-    categoria() { this.resultado = null; },
+    modo() { this.categoriasSeleccionadas = []; this.todasCategorias = false; this.resultado = null; this.ordenMes = null; },
+    categoriasSeleccionadas() { this.resultado = null; },
+    todasCategorias() { this.resultado = null; },
     porTerminal() { this.resultado = null; this.ordenMes = null; },
     agruparMeses() { this.resultado = null; this.ordenMes = null; },
     perPage() { this.page = 1; },
     busqueda() { this.page = 1; },
   },
+  mounted() {
+    document.addEventListener("pointerdown", this.cerrarSelectorAlSalir);
+  },
+  beforeUnmount() {
+    document.removeEventListener("pointerdown", this.cerrarSelectorAlSalir);
+  },
   methods: {
+    cerrarSelectorCategorias() {
+      this.$refs.selectorCategorias?.removeAttribute("open");
+    },
+    cerrarSelectorAlSalir(event) {
+      if (!this.$refs.selectorCategorias?.contains(event.target)) this.cerrarSelectorCategorias();
+    },
     async exportar(formato) {
       if (!this.resultado) return;
       const tablas = tablasPeriodo(this.resultado, this.nombreDimension, this.resultado.filas, "Ventas por período");
@@ -127,6 +141,7 @@ export default {
       this.page = 1;
     },
     async generar() {
+      this.cerrarSelectorCategorias();
       this.loading = true;
       this.resultado = null;
       this.page = 1;
@@ -142,7 +157,7 @@ export default {
       });
       try {
         const { data } = await axios.get(route("reporte-periodo.datos"), {
-          params: { desde: this.fechaDesde, hasta: this.fechaHasta, modo: this.modo, categoria: this.categoria, por_terminal: this.porTerminal ? 1 : 0, agrupar_meses: this.agruparMeses ? 1 : 0 },
+          params: { desde: this.fechaDesde, hasta: this.fechaHasta, modo: this.modo, ...(this.todasCategorias ? { categoria: "__todos__" } : { categorias: this.categoriasSeleccionadas }), por_terminal: this.porTerminal ? 1 : 0, agrupar_meses: this.agruparMeses ? 1 : 0 },
         });
         this.resultado = data;
         await this.$nextTick();
@@ -197,14 +212,22 @@ export default {
               </BCol>
               <BCol md="3">
                 <label for="categoria-periodo" class="form-label">{{ nombreDimension }}</label>
-                <select id="categoria-periodo" v-model="categoria" class="form-select" :disabled="!opcionesCategoria.length">
-                  <option value="" disabled>Seleccione {{ nombreDimension.toLowerCase() }}</option>
-                  <option v-if="opcionesCategoria.length" value="__todos__">Todos</option>
-                  <option v-for="opcion in opcionesCategoria" :key="opcion" :value="opcion">{{ opcion }}</option>
-                </select>
+                <details ref="selectorCategorias" class="position-relative">
+                  <summary id="categoria-periodo" class="form-select text-truncate" style="cursor: pointer; list-style: none">
+                    {{ todasCategorias ? "Todos" : categoriasSeleccionadas.length ? categoriasSeleccionadas.join(", ") : `Seleccione ${nombreDimension.toLowerCase()}` }}
+                  </summary>
+                  <div class="position-absolute w-100 bg-white border rounded shadow-sm p-2 overflow-auto" style="z-index: 10; max-height: 15rem">
+                    <label class="d-flex align-items-center gap-2 py-1">
+                      <input v-model="todasCategorias" type="checkbox" /> Todos
+                    </label>
+                    <label v-for="opcion in opcionesCategoria" :key="opcion" class="d-flex align-items-center gap-2 py-1">
+                      <input v-model="categoriasSeleccionadas" type="checkbox" :value="opcion" :disabled="todasCategorias" /> {{ opcion }}
+                    </label>
+                  </div>
+                </details>
               </BCol>
               <BCol md="1">
-                <BButton variant="primary" :disabled="loading || !categoria || mesDesde > mesHasta" @click="generar">{{ loading ? "Generando..." : "Generar reporte" }}</BButton>
+                <BButton variant="primary" :disabled="loading || !opcionesCategoria.length || (!todasCategorias && !categoriasSeleccionadas.length) || mesDesde > mesHasta" @click="generar">{{ loading ? "Generando..." : "Generar reporte" }}</BButton>
               </BCol>
             </BRow>
             <div v-if="mesDesde > mesHasta" class="text-danger small mb-3">El mes desde debe ser anterior o igual al mes hasta.</div>

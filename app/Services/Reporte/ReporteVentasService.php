@@ -251,7 +251,7 @@ class ReporteVentasService
      */
     private function filtraCatalogo(array $filtros): bool
     {
-        foreach (['grupo', 'subgrupo', 'division', 'sociedad', 'buscar'] as $campo) {
+        foreach (['grupo', 'subgrupo', 'division', 'sociedad', 'grupos', 'subgrupos', 'divisiones', 'sociedades', 'buscar'] as $campo) {
             if (! empty($filtros[$campo])) {
                 return true;
             }
@@ -306,8 +306,12 @@ class ReporteVentasService
      */
     private function pasaFiltros(string $key, ?array $info, array $filtros): bool
     {
-        foreach (['grupo', 'subgrupo', 'division', 'sociedad'] as $campo) {
+        foreach (['grupo' => 'grupos', 'subgrupo' => 'subgrupos', 'division' => 'divisiones', 'sociedad' => 'sociedades'] as $campo => $plural) {
             if (! empty($filtros[$campo]) && ($info[$campo] ?? null) !== $filtros[$campo]) {
+                return false;
+            }
+
+            if (! empty($filtros[$plural]) && ! in_array($info[$campo] ?? null, $filtros[$plural], true)) {
                 return false;
             }
         }

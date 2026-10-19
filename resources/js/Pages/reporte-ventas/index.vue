@@ -1,6 +1,7 @@
 <script>
 import Layout from "@/Layouts/main.vue";
 import PageHeader from "@/Components/page-header.vue";
+import ReporteSelectorMultiple from "@/Components/reporte-selector-multiple.vue";
 import axios from "axios";
 import Swal from "sweetalert2";
 import { descargarExcel, descargarPdf, tablaVentas } from "@/reporte-export.js";
@@ -9,6 +10,7 @@ export default {
   components: {
     Layout,
     PageHeader,
+    ReporteSelectorMultiple,
   },
   props: {
     dimensiones: {
@@ -27,7 +29,8 @@ export default {
       agrupar: ["terminal"],
       incluirRaza: false,
       incluirClasificacion: false,
-      filtros: { grupo: "", subgrupo: "", division: "", sociedad: "", tipo: "", estatus: "todos", buscar: "" },
+      filtros: { tipo: "", estatus: "todos", buscar: "" },
+      filtrosSeleccionados: { grupos: [], subgrupos: [], divisiones: [], sociedades: [] },
       opciones: { grupos: [], subgrupos: [], divisiones: [], sociedades: [], tipos: [] },
       resultado: null,
       loading: false,
@@ -145,7 +148,8 @@ export default {
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     },
     limpiarFiltros() {
-      this.filtros = { grupo: "", subgrupo: "", division: "", sociedad: "", tipo: "", estatus: "todos", buscar: "" };
+      this.filtros = { tipo: "", estatus: "todos", buscar: "" };
+      this.filtrosSeleccionados = { grupos: [], subgrupos: [], divisiones: [], sociedades: [] };
     },
     async generar() {
       if (!this.desde || !this.hasta) {
@@ -171,8 +175,9 @@ export default {
 
       try {
         const filtros = Object.fromEntries(Object.entries(this.filtros).filter(([, value]) => value !== ""));
+        const categorias = Object.fromEntries(Object.entries(this.filtrosSeleccionados).filter(([, values]) => values.length));
         const { data } = await axios.get(route("reporte-ventas.datos"), {
-          params: { desde: this.desde, hasta: this.hasta, agrupar: this.agrupar, ...(this.incluirRaza ? { raza: 1 } : {}), ...filtros },
+          params: { desde: this.desde, hasta: this.hasta, agrupar: this.agrupar, ...(this.incluirRaza ? { raza: 1 } : {}), ...filtros, ...categorias },
         });
         this.resultado = data;
         await this.esperarRender();
@@ -238,32 +243,16 @@ export default {
                 <input id="f-buscar" v-model="filtros.buscar" type="search" class="form-control" placeholder="Terminal o nombre" />
               </BCol>
               <BCol md="2">
-                <label for="f-grupo" class="form-label">Grupo</label>
-                <select id="f-grupo" v-model="filtros.grupo" class="form-select">
-                  <option value="">Todos</option>
-                  <option v-for="opcion in opciones.grupos" :key="opcion" :value="opcion">{{ opcion }}</option>
-                </select>
+                <ReporteSelectorMultiple id="f-grupo" v-model="filtrosSeleccionados.grupos" label="Grupo" :options="opciones.grupos" />
               </BCol>
               <BCol md="2">
-                <label for="f-subgrupo" class="form-label">Subgrupo</label>
-                <select id="f-subgrupo" v-model="filtros.subgrupo" class="form-select">
-                  <option value="">Todos</option>
-                  <option v-for="opcion in opciones.subgrupos" :key="opcion" :value="opcion">{{ opcion }}</option>
-                </select>
+                <ReporteSelectorMultiple id="f-subgrupo" v-model="filtrosSeleccionados.subgrupos" label="Subgrupo" :options="opciones.subgrupos" />
               </BCol>
               <BCol md="2">
-                <label for="f-division" class="form-label">Division</label>
-                <select id="f-division" v-model="filtros.division" class="form-select">
-                  <option value="">Todas</option>
-                  <option v-for="opcion in opciones.divisiones" :key="opcion" :value="opcion">{{ opcion }}</option>
-                </select>
+                <ReporteSelectorMultiple id="f-division" v-model="filtrosSeleccionados.divisiones" label="División" :options="opciones.divisiones" />
               </BCol>
               <BCol md="2">
-                <label for="f-sociedad" class="form-label">Sociedad</label>
-                <select id="f-sociedad" v-model="filtros.sociedad" class="form-select">
-                  <option value="">Todas</option>
-                  <option v-for="opcion in opciones.sociedades" :key="opcion" :value="opcion">{{ opcion }}</option>
-                </select>
+                <ReporteSelectorMultiple id="f-sociedad" v-model="filtrosSeleccionados.sociedades" label="Sociedad" :options="opciones.sociedades" />
               </BCol>
               <BCol md="2">
                 <label for="f-tipo" class="form-label">Tipo</label>

@@ -100,3 +100,28 @@ test('subgroup report omits product columns without sales after filtering', func
         ->assertJsonPath('totales.total_venta', 100)
         ->assertJsonPath('cobertura.dias_con_datos', 1);
 });
+
+test('sales report includes selected groups and combines them with other multiple filters', function () {
+    $this->actingAs(User::factory()->create());
+
+    foreach ([
+        ['1001', 'Grupo A', 'Subgrupo X', 100],
+        ['1002', 'Grupo B', 'Subgrupo X', 200],
+        ['1003', 'Grupo C', 'Subgrupo X', 300],
+        ['1004', 'Grupo B', 'Subgrupo Y', 400],
+    ] as [$terminal, $grupo, $subgrupo, $monto]) {
+        CentroCosto::factory()->create(['id_viejo' => $terminal, 'id_grupo' => $grupo, 'id_sub_grupo' => $subgrupo]);
+        VentaUsuario::factory()->create(['agencia_id' => $terminal, 'tipo' => 'Tradicional', 'monto' => $monto, 'fecha' => '2026-10-01']);
+    }
+
+    $base = ['desde' => '2026-10-01', 'hasta' => '2026-10-05', 'agrupar' => ['terminal']];
+
+    $this->getJson(route('reporte-ventas.datos', $base + ['grupos' => ['Grupo A', 'Grupo B'], 'subgrupos' => ['Subgrupo X']]))
+        ->assertOk()
+        ->assertJsonPath('total_filas', 2)
+        ->assertJsonPath('totales.total_venta', 300);
+
+    $this->getJson(route('reporte-ventas.datos', $base + ['grupos' => ['Grupo A', 'Grupo A']]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('grupos.1');
+});

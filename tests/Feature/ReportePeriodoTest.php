@@ -222,3 +222,47 @@ test('period report preserves totals with grouping and terminal detail', functio
     'combined summary' => [true, false],
     'combined terminals' => [true, true],
 ]);
+
+test('period report includes several marked subgroups and excludes unselected ones', function (bool $agruparMeses) {
+    $this->actingAs(User::factory()->create());
+
+    foreach ([
+        ['1001', 'Subgrupo A', 10],
+        ['1002', 'Subgrupo B', 20],
+        ['1003', 'Subgrupo C', 30],
+    ] as [$terminal, $subgrupo, $monto]) {
+        CentroCosto::factory()->create(['id_viejo' => $terminal, 'id_sub_grupo' => $subgrupo]);
+        VentaUsuario::factory()->create(['agencia_id' => $terminal, 'tipo' => 'Tradicional', 'monto' => $monto, 'fecha' => '2026-08-10']);
+        VentaUsuario::factory()->create(['agencia_id' => $terminal, 'tipo' => 'Tradicional', 'monto' => $monto, 'fecha' => '2026-09-10']);
+    }
+
+    $this->putJson(route('terminal.guardar-categorias-reporte'), [
+        'activas' => [
+            ['dimension' => 'subgrupo', 'valor' => 'Subgrupo A'],
+            ['dimension' => 'subgrupo', 'valor' => 'Subgrupo B'],
+        ],
+    ])->assertOk();
+
+    $base = [
+        'desde' => '2026-08-01',
+        'hasta' => '2026-09-30',
+        'modo' => 'subgrupo',
+        'por_terminal' => 1,
+        'agrupar_meses' => (int) $agruparMeses,
+    ];
+
+    $this->getJson(route('reporte-periodo.datos', $base + ['categorias' => ['Subgrupo A', 'Subgrupo B']]))
+        ->assertOk()
+        ->assertJsonPath('total_filas', 2)
+        ->assertJsonPath('filas.0.subgrupo', 'Subgrupo A')
+        ->assertJsonPath('filas.1.subgrupo', 'Subgrupo B')
+        ->assertJsonPath('total_venta', 60);
+
+    $this->getJson(route('reporte-periodo.datos', $base + ['categorias' => ['Subgrupo A', 'Subgrupo C']]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('categoria');
+
+    $this->getJson(route('reporte-periodo.datos', $base + ['categorias' => ['Subgrupo A', 'Subgrupo A']]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('categorias.1');
+})->with(['separate months' => false, 'grouped months' => true]);

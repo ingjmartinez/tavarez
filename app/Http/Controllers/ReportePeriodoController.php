@@ -30,9 +30,10 @@ class ReportePeriodoController extends Controller
     {
         $datos = $request->validated();
         $activas = $this->categorias->activas()[$datos['modo']] ?? [];
-        $todas = $datos['categoria'] === '__todos__';
+        $todas = ($datos['categoria'] ?? null) === '__todos__';
+        $seleccionadas = $todas ? [] : ($datos['categorias'] ?? [$datos['categoria']]);
 
-        if ($activas === [] || (! $todas && ! isset($activas[$datos['categoria']]))) {
+        if ($activas === [] || (! $todas && ! collect($seleccionadas)->every(fn (string $categoria): bool => isset($activas[$categoria])))) {
             throw ValidationException::withMessages(['categoria' => 'Seleccione una categoría marcada en Mantenimiento de terminales / Grupo.']);
         }
 
@@ -40,9 +41,10 @@ class ReportePeriodoController extends Controller
             $datos['desde'],
             $datos['hasta'],
             $datos['modo'],
-            $todas ? null : $datos['categoria'],
+            $todas ? null : ($datos['categoria'] ?? null),
             (bool) ($datos['por_terminal'] ?? false),
             (bool) ($datos['agrupar_meses'] ?? false),
+            $todas ? null : $seleccionadas,
         ));
     }
 }
