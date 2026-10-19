@@ -55,7 +55,7 @@ class TerminalService
      *
      * @return Collection<string, array<string, mixed>>
      */
-    public function catalogo(bool $paraReporte = false, ?string $dimensionSeleccionada = null, ?string $valorSeleccionado = null): Collection
+    public function catalogo(bool $paraReporte = false, ?string $dimensionSeleccionada = null, ?string $valorSeleccionado = null, ?array $valoresSeleccionados = null): Collection
     {
         $activas = ($paraReporte || $dimensionSeleccionada !== null) ? $this->categorias->activas() : [];
 
@@ -65,7 +65,9 @@ class TerminalService
             ->orderBy('id_centro_costo')
             ->get(['id_centro_costo', 'id_viejo', 'descripcion', 'id_grupo', 'id_sub_grupo', 'id_division', 'id_sociedad', 'inactivo'])
             ->filter(fn (CentroCosto $centro): bool => $dimensionSeleccionada !== null
-                ? ($valorSeleccionado === null || $centro->{ReporteCategoriasService::DIMENSIONES[$dimensionSeleccionada]} === $valorSeleccionado)
+                ? ($valoresSeleccionados !== null
+                    ? in_array($centro->{ReporteCategoriasService::DIMENSIONES[$dimensionSeleccionada]}, $valoresSeleccionados, true)
+                    : ($valorSeleccionado === null || $centro->{ReporteCategoriasService::DIMENSIONES[$dimensionSeleccionada]} === $valorSeleccionado))
                     && isset($activas[$dimensionSeleccionada][$centro->{ReporteCategoriasService::DIMENSIONES[$dimensionSeleccionada]}])
                 : (! $paraReporte || $this->categorias->centroVisible($centro, $activas)))
             ->groupBy(fn (CentroCosto $centro) => $this->terminalKey($centro->id_viejo))

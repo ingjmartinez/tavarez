@@ -28,12 +28,13 @@ class ReporteSubgruposController extends Controller
     {
         $datos = $request->validated();
 
-        $todasCategorias = $datos['categoria'] === '__todos__';
+        $todasCategorias = ($datos['categoria'] ?? null) === '__todos__';
+        $seleccionadas = $todasCategorias ? [] : ($datos['categorias'] ?? [$datos['categoria']]);
         $categoriasActivas = $this->categorias->activas()[$datos['modo']] ?? [];
-        $categoriaValida = $categoriasActivas !== [] && ($todasCategorias || isset($categoriasActivas[$datos['categoria']]));
+        $categoriaValida = $categoriasActivas !== [] && ($todasCategorias || collect($seleccionadas)->every(fn (string $categoria): bool => isset($categoriasActivas[$categoria])));
 
         if (! $categoriaValida) {
-            throw ValidationException::withMessages(['categoria' => 'Seleccione una categoría marcada en Mantenimiento de terminales / Grupo.']);
+            throw ValidationException::withMessages(['categoria' => 'Seleccione categorías marcadas en Mantenimiento de terminales / Grupo.']);
         }
 
         return response()->json($this->service->generar(
@@ -42,7 +43,7 @@ class ReporteSubgruposController extends Controller
             ($datos['por_terminal'] ?? false) ? [$datos['modo'], 'terminal', 'tipo'] : [$datos['modo'], 'tipo'],
             ['raza' => true],
             dimensionSeleccionada: $datos['modo'],
-            valorSeleccionado: $todasCategorias ? null : $datos['categoria'],
+            valoresSeleccionados: $todasCategorias ? null : $seleccionadas,
             ordenarPorAgrupacion: (bool) ($datos['por_terminal'] ?? false),
         ));
     }

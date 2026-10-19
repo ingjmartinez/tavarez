@@ -34,6 +34,10 @@ test('daily averages use sale days separately for each product type and raza', f
 test('terminals are classified by their average on days with sales', function () {
     $this->actingAs(User::factory()->create());
 
+    $this->get(route('reporte-ventas.index'))
+        ->assertOk()
+        ->assertInertia(fn ($page) => $page->component('reporte-ventas/index')->where('clasificacionUmbrales', ['A' => 12500, 'B' => 10000, 'C' => 6500]));
+
     foreach ([
         '1001' => 25000,
         '1002' => 20000,

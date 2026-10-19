@@ -15,6 +15,7 @@ export default {
       type: Object,
       required: true,
     },
+    clasificacionUmbrales: { type: Object, required: true },
   },
   data() {
     const hoy = new Date();
@@ -36,6 +37,19 @@ export default {
     };
   },
   computed: {
+    dimensionesAgrupacion() {
+      return Object.fromEntries(Object.entries(this.dimensiones).filter(([key]) => !["grupo", "division", "estatus"].includes(key)));
+    },
+    rangosClasificacion() {
+      const umbrales = Object.entries(this.clasificacionUmbrales);
+      const rangos = umbrales.map(([letra, minimo], indice) => ({
+        letra,
+        descripcion: indice === 0
+          ? `Desde ${this.formatMonto(minimo)}`
+          : `De ${this.formatMonto(minimo)} a menos de ${this.formatMonto(umbrales[indice - 1][1])}`,
+      }));
+      return [...rangos, { letra: "D", descripcion: `Menos de ${this.formatMonto(umbrales.at(-1)[1])}` }];
+    },
     columnas() {
       if (!this.resultado) {
         return [];
@@ -195,8 +209,8 @@ export default {
               </BCol>
               <BCol md="8">
                 <label class="form-label d-block">Agrupar por</label>
-                <div class="d-flex flex-wrap gap-3">
-                  <div v-for="(label, key) in dimensiones" :key="key" class="form-check">
+                <div class="d-flex flex-wrap align-items-start gap-3">
+                  <div v-for="(label, key) in dimensionesAgrupacion" :key="key" class="form-check">
                     <input :id="`agrupar-${key}`" v-model="agrupar" :value="key" type="checkbox" class="form-check-input" />
                     <label :for="`agrupar-${key}`" class="form-check-label">{{ label }}</label>
                   </div>
@@ -204,9 +218,15 @@ export default {
                     <input id="incluir-raza" v-model="incluirRaza" type="checkbox" class="form-check-input" />
                     <label for="incluir-raza" class="form-check-label">Ventas raza</label>
                   </div>
-                  <div class="form-check">
-                    <input id="incluir-clasificacion" v-model="incluirClasificacion" type="checkbox" class="form-check-input" :disabled="!agrupar.includes('terminal')" />
-                    <label for="incluir-clasificacion" class="form-check-label">Clasificación</label>
+                  <div class="d-flex align-items-start gap-2 ms-auto">
+                    <div class="form-check text-nowrap">
+                      <input id="incluir-clasificacion" v-model="incluirClasificacion" type="checkbox" class="form-check-input" :disabled="!agrupar.includes('terminal')" />
+                      <label for="incluir-clasificacion" class="form-check-label">Clasificación</label>
+                    </div>
+                    <div v-if="agrupar.includes('terminal')" class="border rounded bg-light px-2 py-1 small">
+                      <div class="fw-semibold">Clasificación por promedio diario con venta</div>
+                      <div v-for="rango in rangosClasificacion" :key="rango.letra"><strong>{{ rango.letra }}:</strong> {{ rango.descripcion }}</div>
+                    </div>
                   </div>
                 </div>
               </BCol>

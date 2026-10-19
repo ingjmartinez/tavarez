@@ -16,6 +16,7 @@ class ReporteVentasController extends Controller
     {
         return Inertia::render('reporte-ventas/index', [
             'dimensiones' => ReporteVentasService::DIMENSIONES,
+            'clasificacionUmbrales' => ReporteVentasService::CLASIFICACION_UMBRALES,
         ]);
     }
 

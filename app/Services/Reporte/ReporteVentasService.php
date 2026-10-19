@@ -26,6 +26,8 @@ class ReporteVentasService
 
     public const TIPOS_PRODUCTO = ['No Tradicional', 'Recarga', 'Tradicional'];
 
+    public const CLASIFICACION_UMBRALES = ['A' => 12500, 'B' => 10000, 'C' => 6500];
+
     /**
      * @var array<string, string>
      */
@@ -66,9 +68,9 @@ class ReporteVentasService
      * @param  array<string, mixed>  $filtros
      * @return array<string, mixed>
      */
-    public function generar(string $desde, string $hasta, array $agrupar, array $filtros, ?string $dimensionSeleccionada = null, ?string $valorSeleccionado = null, bool $ordenarPorAgrupacion = false): array
+    public function generar(string $desde, string $hasta, array $agrupar, array $filtros, ?string $dimensionSeleccionada = null, ?string $valorSeleccionado = null, bool $ordenarPorAgrupacion = false, ?array $valoresSeleccionados = null): array
     {
-        $catalogo = $this->terminales->catalogo(paraReporte: true, dimensionSeleccionada: $dimensionSeleccionada, valorSeleccionado: $valorSeleccionado);
+        $catalogo = $this->terminales->catalogo(paraReporte: true, dimensionSeleccionada: $dimensionSeleccionada, valorSeleccionado: $valorSeleccionado, valoresSeleccionados: $valoresSeleccionados);
         $seleccionActiva = $dimensionSeleccionada !== null || $this->categorias->activas() !== [];
         $porTipo = in_array('tipo', $agrupar, true);
         $incluirRaza = ! empty($filtros['raza']);
@@ -235,12 +237,13 @@ class ReporteVentasService
 
     private function clasificacion(float $promedio): string
     {
-        return match (true) {
-            $promedio >= 12500 => 'A',
-            $promedio >= 10000 => 'B',
-            $promedio >= 6500 => 'C',
-            default => 'D',
-        };
+        foreach (self::CLASIFICACION_UMBRALES as $letra => $minimo) {
+            if ($promedio >= $minimo) {
+                return $letra;
+            }
+        }
+
+        return 'D';
     }
 
     private function consultaRaza(string $desde, string $hasta): Builder

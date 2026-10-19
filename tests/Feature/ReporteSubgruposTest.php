@@ -107,6 +107,43 @@ test('all subgroups includes each marked subgroup and excludes unmarked ones', f
         ->assertJsonPath('totales.total_venta', 300);
 });
 
+test('multiple selected subgroups include only their sales and reject unmarked selections', function () {
+    $this->actingAs(User::factory()->create());
+
+    foreach ([
+        ['1001', 'Subgrupo A', 100],
+        ['1002', 'Subgrupo B', 200],
+        ['1003', 'Subgrupo C', 300],
+    ] as [$terminal, $subgrupo, $monto]) {
+        CentroCosto::factory()->create(['id_viejo' => $terminal, 'id_sub_grupo' => $subgrupo]);
+        VentaUsuario::factory()->create(['agencia_id' => $terminal, 'tipo' => 'Tradicional', 'monto' => $monto, 'fecha' => '2026-10-01']);
+    }
+
+    $this->putJson(route('terminal.guardar-categorias-reporte'), [
+        'activas' => [
+            ['dimension' => 'subgrupo', 'valor' => 'Subgrupo A'],
+            ['dimension' => 'subgrupo', 'valor' => 'Subgrupo B'],
+        ],
+    ])->assertOk();
+
+    $base = ['desde' => '2026-10-01', 'hasta' => '2026-10-05', 'modo' => 'subgrupo', 'por_terminal' => true];
+
+    $this->getJson(route('reporte-subgrupos.datos', $base + ['categorias' => ['Subgrupo A', 'Subgrupo B']]))
+        ->assertOk()
+        ->assertJsonPath('total_filas', 2)
+        ->assertJsonPath('filas.0.subgrupo', 'Subgrupo A')
+        ->assertJsonPath('filas.1.subgrupo', 'Subgrupo B')
+        ->assertJsonPath('totales.total_venta', 300);
+
+    $this->getJson(route('reporte-subgrupos.datos', $base + ['categorias' => ['Subgrupo A', 'Subgrupo C']]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('categoria');
+
+    $this->getJson(route('reporte-subgrupos.datos', $base + ['categorias' => ['Subgrupo A', 'Subgrupo A']]))
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors('categorias.1');
+});
+
 test('all corporations includes each marked corporation and excludes unmarked ones', function () {
     $this->actingAs(User::factory()->create());
 
@@ -131,6 +168,16 @@ test('all corporations includes each marked corporation and excludes unmarked on
         'hasta' => '2026-10-05',
         'modo' => 'sociedad',
         'categoria' => '__todos__',
+    ]))
+        ->assertOk()
+        ->assertJsonPath('total_filas', 2)
+        ->assertJsonPath('totales.total_venta', 300);
+
+    $this->getJson(route('reporte-subgrupos.datos', [
+        'desde' => '2026-10-01',
+        'hasta' => '2026-10-05',
+        'modo' => 'sociedad',
+        'categorias' => ['Corporacion A', 'Corporacion B'],
     ]))
         ->assertOk()
         ->assertJsonPath('total_filas', 2)

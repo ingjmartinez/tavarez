@@ -18,7 +18,8 @@ export default {
       desde: iso(new Date(hoy.getFullYear(), hoy.getMonth(), 1)),
       hasta: iso(hoy),
       modo: "subgrupo",
-      categoria: "",
+      categoriasSeleccionadas: [],
+      todasCategorias: false,
       porTerminal: false,
       ordenProducto: null,
       ordenDireccion: "desc",
@@ -64,13 +65,28 @@ export default {
     },
   },
   watch: {
-    modo() { this.categoria = ""; this.resultado = null; this.ordenProducto = null; },
-    categoria() { this.resultado = null; },
+    desde() { this.cerrarSelectorCategorias(); },
+    hasta() { this.cerrarSelectorCategorias(); },
+    modo() { this.cerrarSelectorCategorias(); this.categoriasSeleccionadas = []; this.todasCategorias = false; this.resultado = null; this.ordenProducto = null; },
+    categoriasSeleccionadas() { this.resultado = null; },
+    todasCategorias() { this.resultado = null; },
     porTerminal() { this.resultado = null; this.ordenProducto = null; },
     perPage() { this.page = 1; },
     busqueda() { this.page = 1; },
   },
+  mounted() {
+    document.addEventListener("pointerdown", this.cerrarSelectorAlSalir);
+  },
+  beforeUnmount() {
+    document.removeEventListener("pointerdown", this.cerrarSelectorAlSalir);
+  },
   methods: {
+    cerrarSelectorCategorias() {
+      this.$refs.selectorCategorias?.removeAttribute("open");
+    },
+    cerrarSelectorAlSalir(event) {
+      if (!this.$refs.selectorCategorias?.contains(event.target)) this.cerrarSelectorCategorias();
+    },
     async exportar(formato) {
       if (!this.resultado) return;
       const columnas = [{ key: this.modo, label: this.nombreDimension }, ...(this.porTerminal ? [{ key: "terminal", label: "Terminal" }, { key: "nombre", label: "Nombre" }] : [])];
@@ -100,6 +116,7 @@ export default {
       await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     },
     async generar() {
+      this.cerrarSelectorCategorias();
       this.loading = true;
       this.page = 1;
       this.busqueda = "";
@@ -113,7 +130,7 @@ export default {
       });
       try {
         const { data } = await axios.get(route("reporte-subgrupos.datos"), {
-          params: { desde: this.desde, hasta: this.hasta, modo: this.modo, categoria: this.categoria, por_terminal: this.porTerminal ? 1 : 0 },
+          params: { desde: this.desde, hasta: this.hasta, modo: this.modo, ...(this.todasCategorias ? { categoria: "__todos__" } : { categorias: this.categoriasSeleccionadas }), por_terminal: this.porTerminal ? 1 : 0 },
         });
         this.resultado = data;
         await this.esperarRender();
@@ -142,7 +159,7 @@ export default {
         <BCard no-body>
           <BCardHeader><h5 class="card-title mb-0">Ventas por subgrupo</h5></BCardHeader>
           <BCardBody>
-            <div class="text-muted small mb-3">Seleccione un subgrupo o una corporación marcada en Mantenimiento de terminales / Grupo.</div>
+            <div class="text-muted small mb-3">Seleccione uno o varios subgrupos o corporaciones marcados en Mantenimiento de terminales / Grupo.</div>
             <div v-if="!opcionesCategoria.length" class="alert alert-warning py-2">
               No hay {{ nombreDimension.toLowerCase() }} marcada. Márquela en Mantenimiento de terminales / Grupo.
             </div>
@@ -164,14 +181,22 @@ export default {
               </BCol>
               <BCol md="3">
                 <label for="categoria-subgrupos" class="form-label">{{ nombreDimension }}</label>
-                <select id="categoria-subgrupos" v-model="categoria" class="form-select" :disabled="!opcionesCategoria.length">
-                  <option value="" disabled>Seleccione {{ nombreDimension.toLowerCase() }}</option>
-                  <option v-if="opcionesCategoria.length" value="__todos__">Todos</option>
-                  <option v-for="opcion in opcionesCategoria" :key="opcion" :value="opcion">{{ opcion }}</option>
-                </select>
+                <details ref="selectorCategorias" class="position-relative">
+                  <summary id="categoria-subgrupos" class="form-select text-truncate" style="cursor: pointer; list-style: none">
+                    {{ todasCategorias ? "Todos" : categoriasSeleccionadas.length ? categoriasSeleccionadas.join(", ") : `Seleccione ${nombreDimension.toLowerCase()}` }}
+                  </summary>
+                  <div class="position-absolute w-100 bg-white border rounded shadow-sm p-2 overflow-auto" style="z-index: 10; max-height: 15rem">
+                    <label class="d-flex align-items-center gap-2 py-1">
+                      <input v-model="todasCategorias" type="checkbox" /> Todos
+                    </label>
+                    <label v-for="opcion in opcionesCategoria" :key="opcion" class="d-flex align-items-center gap-2 py-1">
+                      <input v-model="categoriasSeleccionadas" type="checkbox" :value="opcion" :disabled="todasCategorias" /> {{ opcion }}
+                    </label>
+                  </div>
+                </details>
               </BCol>
               <BCol md="1">
-                <BButton variant="primary" :disabled="loading || !categoria" @click="generar">{{ loading ? "Generando..." : "Generar reporte" }}</BButton>
+                <BButton variant="primary" :disabled="loading || !opcionesCategoria.length || (!todasCategorias && !categoriasSeleccionadas.length)" @click="generar">{{ loading ? "Generando..." : "Generar reporte" }}</BButton>
               </BCol>
             </BRow>
             <div class="form-check mb-3">
