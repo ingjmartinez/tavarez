@@ -173,17 +173,17 @@ export function tablaVentas(resultado, columnas, filas, titulo, periodo) {
   const encabezados = [
     ...columnas.map((columna) => columna.label),
     ...resultado.tipos.flatMap((tipo) => [tipo, `Promedio ${tipo}`]),
-    "Promedio total", "Venta total",
+    "Venta total", "Promedio total",
   ];
   const valores = filas.map((fila) => [
     ...columnas.map((columna) => fila[columna.key] ?? ""),
     ...resultado.tipos.flatMap((tipo) => [Number(fila.tipos?.[tipo] ?? 0), Number(fila.promedios_por_tipo?.[tipo] ?? 0)]),
-    Number(fila.promedio ?? 0), Number(fila.total_venta ?? 0),
+    Number(fila.total_venta ?? 0), Number(fila.promedio ?? 0),
   ]);
   const totales = [
     "Total", ...columnas.slice(1).map(() => ""),
     ...resultado.tipos.flatMap((tipo) => [Number(resultado.totales.por_tipo?.[tipo] ?? 0), Number(resultado.totales.promedios_por_tipo?.[tipo] ?? 0)]),
-    Number(resultado.totales.promedio ?? 0), Number(resultado.totales.total_venta ?? 0),
+    Number(resultado.totales.total_venta ?? 0), Number(resultado.totales.promedio ?? 0),
   ];
   return { titulo, periodo, encabezados, filas: valores, totales };
 }
@@ -194,9 +194,9 @@ export function tablasPeriodo(resultado, columnaPrincipal, filas, titulo) {
   const base = (fila) => [fila[resultado.modo] ?? "", ...(resultado.por_terminal ? [fila.terminal ?? "", fila.nombre ?? ""] : [])];
   const campos = (filaMes) => [
     ...resultado.tipos.flatMap((tipo) => [Number(filaMes?.tipos?.[tipo] ?? 0), Number(filaMes?.promedios_por_tipo?.[tipo] ?? 0)]),
-    Number(filaMes?.promedio ?? 0), Number(filaMes?.total_venta ?? 0),
+    Number(filaMes?.total_venta ?? 0), Number(filaMes?.promedio ?? 0),
   ];
-  const encabezadosMes = resultado.tipos.flatMap((tipo) => [tipo, `Promedio ${tipo}`]).concat(["Promedio total", "Venta total"]);
+  const encabezadosMes = resultado.tipos.flatMap((tipo) => [tipo, `Promedio ${tipo}`]).concat(["Venta total", "Promedio total"]);
   const excel = {
     titulo,
     periodo,

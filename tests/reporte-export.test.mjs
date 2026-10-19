@@ -53,12 +53,14 @@ test("ventas conserva todas las filas y totales al preparar la exportación", ()
   const tabla = tablaVentas(resultado, [{ key: "subgrupo", label: "Subgrupo" }], filas, "Ventas", "Septiembre 2026");
 
   assert.equal(tabla.filas.length, 2);
+  assert.deepEqual(tabla.encabezados.slice(-2), ["Venta total", "Promedio total"]);
+  assert.deepEqual(tabla.filas[0].slice(-2), [15, 15]);
   assert.deepEqual(tabla.filas[1], ["Nagua", 20, 20, 0, 0, 20, 20]);
-  assert.equal(tabla.totales.at(-1), 35);
+  assert.deepEqual(tabla.totales.slice(-2), [35, 17.5]);
 });
 
 test("período conserva ambos meses en columnas de Excel y PDF", async () => {
-  const total = (venta) => ({ por_tipo: { Tradicional: venta }, promedios_por_tipo: { Tradicional: venta }, promedio: venta, total_venta: venta });
+  const total = (venta) => ({ por_tipo: { Tradicional: venta }, promedios_por_tipo: { Tradicional: venta / 2 }, promedio: venta / 2, total_venta: venta });
   const resultado = {
     modo: "subgrupo",
     por_terminal: false,
@@ -68,13 +70,15 @@ test("período conserva ambos meses en columnas de Excel y PDF", async () => {
       { clave: "2026-10", etiqueta: "Octubre 2026", desde: "2026-10-01", hasta: "2026-10-18", totales: total(20) },
     ],
   };
-  const filas = [{ subgrupo: "Romana", meses: { "2026-09": { tipos: { Tradicional: 10 }, promedios_por_tipo: { Tradicional: 10 }, promedio: 10, total_venta: 10 }, "2026-10": { tipos: { Tradicional: 20 }, promedios_por_tipo: { Tradicional: 20 }, promedio: 20, total_venta: 20 } } }];
+  const filas = [{ subgrupo: "Romana", meses: { "2026-09": { tipos: { Tradicional: 10 }, promedios_por_tipo: { Tradicional: 5 }, promedio: 5, total_venta: 10 }, "2026-10": { tipos: { Tradicional: 20 }, promedios_por_tipo: { Tradicional: 10 }, promedio: 10, total_venta: 20 } } }];
   const preparado = tablasPeriodo(resultado, "Subgrupo", filas, "Ventas por período");
 
   assert.equal(preparado.excel.encabezados.length, 9);
-  assert.deepEqual(preparado.excel.filas[0], ["Romana", 10, 10, 10, 10, 20, 20, 20, 20]);
+  assert.deepEqual(preparado.excel.encabezados.slice(3, 5).map((encabezado) => encabezado.split(" · ").at(-1)), ["Venta total", "Promedio total"]);
+  assert.deepEqual(preparado.excel.filas[0], ["Romana", 10, 5, 10, 5, 20, 10, 20, 10]);
   assert.equal(preparado.pdf.tablas.length, 1);
-  assert.equal(preparado.pdf.tablas[0].filas[0].at(-1), 20);
+  assert.deepEqual(preparado.pdf.tablas[0].encabezados.slice(3, 5), ["Venta total", "Promedio total"]);
+  assert.deepEqual(preparado.pdf.tablas[0].filas[0].slice(-2), [20, 10]);
   const tablaPdf = definicionPdf(preparado.pdf).content.find((parte) => parte.table).table;
   assert.equal(tablaPdf.headerRows, 2);
   assert.equal(tablaPdf.body[0][1].text, "Septiembre 2026");

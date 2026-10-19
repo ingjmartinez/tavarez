@@ -23,6 +23,6 @@ class AuthServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::define('eliminar-datos', fn (User $user): bool => $user->role === User::ROLE_ADMIN);
-        Gate::define('configurar-reportes', fn (User $user): bool => $user->role === User::ROLE_ADMIN);
+        Gate::define('configurar-reportes', fn (User $user): bool => in_array($user->role, [User::ROLE_ADMIN, User::ROLE_OPERADOR], true));
     }
 }

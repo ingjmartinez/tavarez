@@ -317,8 +317,8 @@ export default {
                         <th class="text-end">{{ tipo }}</th>
                         <th class="text-end">Promedio {{ tipo }}</th>
                       </template>
-                      <th class="text-end">Promedio total</th>
                       <th class="text-end">Venta total</th>
+                      <th class="text-end">Promedio total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -328,8 +328,8 @@ export default {
                         <td class="text-end">{{ formatMonto(fila.tipos[tipo]) }}</td>
                         <td class="text-end">{{ formatMonto(fila.promedios_por_tipo[tipo]) }}</td>
                       </template>
-                      <td class="text-end">{{ formatMonto(fila.promedio) }}</td>
                       <td class="text-end">{{ formatMonto(fila.total_venta) }}</td>
+                      <td class="text-end">{{ formatMonto(fila.promedio) }}</td>
                     </tr>
                     <tr v-if="!filasFiltradas.length">
                       <td :colspan="columnas.length + resultado.tipos.length * 2 + 2" class="text-center text-muted py-3">Sin resultados para los filtros seleccionados.</td>
@@ -342,8 +342,8 @@ export default {
                         <th class="text-end">{{ formatMonto(resultado.totales.por_tipo[tipo]) }}</th>
                         <th class="text-end">{{ formatMonto(resultado.totales.promedios_por_tipo[tipo]) }}</th>
                       </template>
-                      <th class="text-end">{{ formatMonto(resultado.totales.promedio) }}</th>
                       <th class="text-end">{{ formatMonto(resultado.totales.total_venta) }}</th>
+                      <th class="text-end">{{ formatMonto(resultado.totales.promedio) }}</th>
                     </tr>
                   </tfoot>
                 </table>

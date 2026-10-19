@@ -260,8 +260,8 @@ export default {
                           </th>
                           <th class="text-end">Prom. {{ tipo }}</th>
                         </template>
-                        <th class="text-end">Prom. total</th>
                         <th class="text-end">Venta total</th>
+                        <th class="text-end">Prom. total</th>
                       </template>
                     </tr>
                   </thead>
@@ -275,8 +275,8 @@ export default {
                           <td class="text-end">{{ formatMonto(fila.meses[mes.clave]?.tipos[tipo]) }}</td>
                           <td class="text-end">{{ formatMonto(fila.meses[mes.clave]?.promedios_por_tipo[tipo]) }}</td>
                         </template>
-                        <td class="text-end">{{ formatMonto(fila.meses[mes.clave]?.promedio) }}</td>
                         <td class="text-end fw-semibold">{{ formatMonto(fila.meses[mes.clave]?.total_venta) }}</td>
+                        <td class="text-end">{{ formatMonto(fila.meses[mes.clave]?.promedio) }}</td>
                       </template>
                     </tr>
                     <tr v-if="!filasFiltradas.length">
@@ -293,8 +293,8 @@ export default {
                           <th class="text-end">{{ formatMonto(mes.totales.por_tipo[tipo]) }}</th>
                           <th class="text-end">{{ formatMonto(mes.totales.promedios_por_tipo[tipo]) }}</th>
                         </template>
-                        <th class="text-end">{{ formatMonto(mes.totales.promedio) }}</th>
                         <th class="text-end">{{ formatMonto(mes.totales.total_venta) }}</th>
+                        <th class="text-end">{{ formatMonto(mes.totales.promedio) }}</th>
                       </template>
                     </tr>
                   </tfoot>

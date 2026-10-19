@@ -60,11 +60,17 @@ test('selected corporations include terminals across groups and selections apply
     $this->getJson($rutaReporte)->assertJsonPath('totales.total_venta', 600);
 });
 
-test('only administrators can change report categories', function () {
+test('operators can view and change report categories', function () {
     $this->actingAs(User::factory()->create(['role' => User::ROLE_OPERADOR]));
+    CentroCosto::factory()->create(['id_grupo' => 'Grupo A']);
 
-    $this->getJson(route('terminal.categorias-reporte'))->assertForbidden();
-    $this->putJson(route('terminal.guardar-categorias-reporte'), ['activas' => []])->assertForbidden();
+    $this->get(route('terminal.index'))->assertInertia(fn ($page) => $page->component('terminal/index')->where('puedeConfigurarReportes', true));
+    $this->getJson(route('terminal.categorias-reporte'))->assertOk()->assertJsonPath('categorias.grupo.0.valor', 'Grupo A');
+    $this->putJson(route('terminal.guardar-categorias-reporte'), [
+        'activas' => [['dimension' => 'grupo', 'valor' => 'Grupo A']],
+    ])->assertOk();
+
+    $this->assertDatabaseHas('reporte_categorias_activas', ['dimension' => 'grupo', 'valor' => 'Grupo A']);
 });
 
 test('unknown report categories are rejected without changing saved selections', function () {
