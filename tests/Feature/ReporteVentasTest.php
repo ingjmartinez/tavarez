@@ -12,6 +12,12 @@ test('generated terminal keys normalize leading zeroes for both sales tables', f
 
     expect(DB::table('ventas_usuarios')->value('terminal_key'))->toBe('8284636')
         ->and(DB::table('ventas_raza')->value('terminal_key'))->toBe('8284636');
+
+    foreach (['ventas_usuarios', 'ventas_raza'] as $table) {
+        $column = collect(DB::select("PRAGMA table_xinfo('{$table}')"))->firstWhere('name', 'terminal_key');
+
+        expect($column->hidden)->toBe(3);
+    }
 });
 
 test('daily averages use sale days separately for each product type and raza', function () {

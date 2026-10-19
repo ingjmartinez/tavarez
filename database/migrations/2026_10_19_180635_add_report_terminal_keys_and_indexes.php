@@ -14,37 +14,46 @@ return new class extends Migration
     {
         if (DB::getDriverName() === 'sqlite') {
             Schema::table('ventas_usuarios', function (Blueprint $table) {
-                $table->string('terminal_key', 25)->virtualAs("COALESCE(NULLIF(LTRIM(TRIM(agencia_id), '0'), ''), '0')");
+                $table->string('terminal_key', 25)->storedAs("COALESCE(NULLIF(LTRIM(TRIM(agencia_id), '0'), ''), '0')");
                 $table->index(['terminal_key', 'fecha', 'tipo', 'monto'], 'ventas_usuarios_terminal_reporte_index');
                 $table->index(['tipo', 'fecha'], 'ventas_usuarios_tipo_fecha_index');
             });
 
             Schema::table('ventas_raza', function (Blueprint $table) {
-                $table->string('terminal_key', 25)->virtualAs("COALESCE(NULLIF(LTRIM(TRIM(agencia_id), '0'), ''), '0')");
+                $table->string('terminal_key', 25)->storedAs("COALESCE(NULLIF(LTRIM(TRIM(agencia_id), '0'), ''), '0')");
                 $table->index(['terminal_key', 'fecha', 'ventas'], 'ventas_raza_terminal_reporte_index');
             });
 
             return;
         }
 
+        $usuariosChanges = [];
+
         if (! Schema::hasColumn('ventas_usuarios', 'terminal_key')) {
-            DB::statement("ALTER TABLE ventas_usuarios ADD COLUMN terminal_key VARCHAR(25) COLLATE utf8mb4_unicode_ci GENERATED ALWAYS AS (COALESCE(NULLIF(TRIM(LEADING '0' FROM TRIM(agencia_id)), ''), '0')) VIRTUAL, ALGORITHM=INPLACE, LOCK=NONE");
+            $usuariosChanges[] = "ADD COLUMN terminal_key VARCHAR(25) COLLATE utf8mb4_unicode_ci GENERATED ALWAYS AS (COALESCE(NULLIF(TRIM(LEADING '0' FROM TRIM(agencia_id)), ''), '0')) STORED";
         }
-
         if (! Schema::hasIndex('ventas_usuarios', 'ventas_usuarios_terminal_reporte_index')) {
-            DB::statement('ALTER TABLE ventas_usuarios ADD INDEX ventas_usuarios_terminal_reporte_index (terminal_key, fecha, tipo, monto), ALGORITHM=INPLACE, LOCK=NONE');
+            $usuariosChanges[] = 'ADD INDEX ventas_usuarios_terminal_reporte_index (terminal_key, fecha, tipo, monto)';
+        }
+        if (! Schema::hasIndex('ventas_usuarios', 'ventas_usuarios_tipo_fecha_index')) {
+            $usuariosChanges[] = 'ADD INDEX ventas_usuarios_tipo_fecha_index (tipo, fecha)';
         }
 
-        if (! Schema::hasIndex('ventas_usuarios', 'ventas_usuarios_tipo_fecha_index')) {
-            DB::statement('ALTER TABLE ventas_usuarios ADD INDEX ventas_usuarios_tipo_fecha_index (tipo, fecha), ALGORITHM=INPLACE, LOCK=NONE');
+        if ($usuariosChanges !== []) {
+            DB::statement('ALTER TABLE ventas_usuarios '.implode(', ', $usuariosChanges).', ALGORITHM=COPY');
         }
+
+        $razaChanges = [];
 
         if (! Schema::hasColumn('ventas_raza', 'terminal_key')) {
-            DB::statement("ALTER TABLE ventas_raza ADD COLUMN terminal_key VARCHAR(25) COLLATE utf8mb4_unicode_ci GENERATED ALWAYS AS (COALESCE(NULLIF(TRIM(LEADING '0' FROM TRIM(agencia_id)), ''), '0')) VIRTUAL, ALGORITHM=INPLACE, LOCK=NONE");
+            $razaChanges[] = "ADD COLUMN terminal_key VARCHAR(25) COLLATE utf8mb4_unicode_ci GENERATED ALWAYS AS (COALESCE(NULLIF(TRIM(LEADING '0' FROM TRIM(agencia_id)), ''), '0')) STORED";
+        }
+        if (! Schema::hasIndex('ventas_raza', 'ventas_raza_terminal_reporte_index')) {
+            $razaChanges[] = 'ADD INDEX ventas_raza_terminal_reporte_index (terminal_key, fecha, ventas)';
         }
 
-        if (! Schema::hasIndex('ventas_raza', 'ventas_raza_terminal_reporte_index')) {
-            DB::statement('ALTER TABLE ventas_raza ADD INDEX ventas_raza_terminal_reporte_index (terminal_key, fecha, ventas), ALGORITHM=INPLACE, LOCK=NONE');
+        if ($razaChanges !== []) {
+            DB::statement('ALTER TABLE ventas_raza '.implode(', ', $razaChanges).', ALGORITHM=COPY');
         }
     }
 
@@ -53,15 +62,44 @@ return new class extends Migration
      */
     public function down(): void
     {
-        Schema::table('ventas_raza', function (Blueprint $table) {
-            $table->dropIndex('ventas_raza_terminal_reporte_index');
-            $table->dropColumn('terminal_key');
-        });
+        if (DB::getDriverName() === 'sqlite') {
+            Schema::table('ventas_raza', function (Blueprint $table) {
+                $table->dropIndex('ventas_raza_terminal_reporte_index');
+                $table->dropColumn('terminal_key');
+            });
 
-        Schema::table('ventas_usuarios', function (Blueprint $table) {
-            $table->dropIndex('ventas_usuarios_terminal_reporte_index');
-            $table->dropIndex('ventas_usuarios_tipo_fecha_index');
-            $table->dropColumn('terminal_key');
-        });
+            Schema::table('ventas_usuarios', function (Blueprint $table) {
+                $table->dropIndex('ventas_usuarios_terminal_reporte_index');
+                $table->dropIndex('ventas_usuarios_tipo_fecha_index');
+                $table->dropColumn('terminal_key');
+            });
+
+            return;
+        }
+
+        $razaChanges = [];
+        if (Schema::hasIndex('ventas_raza', 'ventas_raza_terminal_reporte_index')) {
+            $razaChanges[] = 'DROP INDEX ventas_raza_terminal_reporte_index';
+        }
+        if (Schema::hasColumn('ventas_raza', 'terminal_key')) {
+            $razaChanges[] = 'DROP COLUMN terminal_key';
+        }
+        if ($razaChanges !== []) {
+            DB::statement('ALTER TABLE ventas_raza '.implode(', ', $razaChanges).', ALGORITHM=COPY');
+        }
+
+        $usuariosChanges = [];
+        if (Schema::hasIndex('ventas_usuarios', 'ventas_usuarios_terminal_reporte_index')) {
+            $usuariosChanges[] = 'DROP INDEX ventas_usuarios_terminal_reporte_index';
+        }
+        if (Schema::hasIndex('ventas_usuarios', 'ventas_usuarios_tipo_fecha_index')) {
+            $usuariosChanges[] = 'DROP INDEX ventas_usuarios_tipo_fecha_index';
+        }
+        if (Schema::hasColumn('ventas_usuarios', 'terminal_key')) {
+            $usuariosChanges[] = 'DROP COLUMN terminal_key';
+        }
+        if ($usuariosChanges !== []) {
+            DB::statement('ALTER TABLE ventas_usuarios '.implode(', ', $usuariosChanges).', ALGORITHM=COPY');
+        }
     }
 };
