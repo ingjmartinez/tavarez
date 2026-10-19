@@ -1,5 +1,6 @@
 [variables]
 NIXPACKS_NODE_VERSION = "22"
+NODE_OPTIONS = "--max-old-space-size=2048"
 
 [start]
 cmd = "node /assets/scripts/prestart.mjs /app/nginx.template.conf /nginx.conf && (php-fpm -y /assets/php-fpm.conf -d memory_limit=1024M -d max_execution_time=300 & nginx -c /nginx.conf)"
