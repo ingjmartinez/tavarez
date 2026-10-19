@@ -146,3 +146,37 @@ test('checked monthly grouping combines selected months in one table block', fun
         ->assertJsonPath('filas.0.meses.periodo.total_venta', 100)
         ->assertJsonPath('filas.0.meses.periodo.promedio', 50);
 });
+
+test('grouped months preserve the totals and types of separate months', function () {
+    $this->actingAs(User::factory()->create());
+    CentroCosto::factory()->create(['id_viejo' => '1001', 'id_sub_grupo' => '18-Romana']);
+    CentroCosto::factory()->create(['id_viejo' => '1002', 'id_sub_grupo' => '34-Nagua']);
+
+    foreach ([['2026-08-10', 20], ['2026-09-10', 30]] as [$fecha, $monto]) {
+        VentaUsuario::factory()->create(['agencia_id' => '1001', 'tipo' => 'Tradicional', 'monto' => $monto, 'fecha' => $fecha]);
+        VentaRaza::factory()->create(['agencia_id' => '1001', 'ventas' => 5, 'fecha' => $fecha]);
+        VentaUsuario::factory()->create(['agencia_id' => '1002', 'tipo' => 'Tradicional', 'monto' => 100, 'fecha' => $fecha]);
+    }
+
+    $this->putJson(route('terminal.guardar-categorias-reporte'), [
+        'activas' => [['dimension' => 'subgrupo', 'valor' => '18-Romana']],
+    ])->assertOk();
+
+    $parametros = [
+        'desde' => '2026-08-01',
+        'hasta' => '2026-09-30',
+        'modo' => 'subgrupo',
+        'categoria' => '18-Romana',
+    ];
+
+    $separado = $this->getJson(route('reporte-periodo.datos', $parametros + ['agrupar_meses' => 0]))->assertOk()->json();
+    $agrupado = $this->getJson(route('reporte-periodo.datos', $parametros + ['agrupar_meses' => 1]))->assertOk()->json();
+
+    expect($separado['total_venta'])->toBe(60)
+        ->and($agrupado['total_venta'])->toBe(60)
+        ->and($agrupado['total_filas'])->toBe(1)
+        ->and($agrupado['tipos'])->toBe($separado['tipos'])
+        ->and($agrupado['filas'][0]['meses']['periodo']['tipos'])->toBe(['Tradicional' => 50, 'Raza' => 10])
+        ->and($agrupado['meses'][0]['totales']['registros'])->toBe(4)
+        ->and($agrupado['meses'][0]['cobertura'])->toBe(['dias_con_datos' => 2, 'dias_rango' => 61]);
+});

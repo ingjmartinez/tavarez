@@ -75,6 +75,9 @@ class ReporteVentasService
         $porTipo = in_array('tipo', $agrupar, true);
         $incluirRaza = ! empty($filtros['raza']);
         $pivotear = $porTipo || $incluirRaza;
+        $terminalesSeleccionadas = $seleccionActiva || $this->filtraCatalogo($filtros)
+            ? $this->terminalesFiltradas($catalogo, $filtros)
+            : null;
 
         $query = VentaUsuario::query()
             ->whereBetween('fecha', [$desde, $hasta])
@@ -94,6 +97,10 @@ class ReporteVentasService
         }
 
         $query->addSelect('fecha')->groupBy('fecha');
+
+        if ($terminalesSeleccionadas !== null) {
+            $query->whereIn(DB::raw($this->terminalKeyExpression()), $terminalesSeleccionadas);
+        }
 
         $dimensiones = array_values(array_diff($agrupar, ['tipo']));
 
@@ -166,10 +173,16 @@ class ReporteVentasService
             }
         };
 
-        $acumular($query->get(), fn (object $row): string => $porTipo ? (string) ($row->tipo ?? 'Sin tipo') : self::ETIQUETA_USUARIOS);
+        $acumular($query->toBase()->cursor(), fn (object $row): string => $porTipo ? (string) ($row->tipo ?? 'Sin tipo') : self::ETIQUETA_USUARIOS);
 
         if ($incluirRaza) {
-            $acumular($this->consultaRaza($desde, $hasta)->get(), fn (): string => self::ETIQUETA_RAZA);
+            $queryRaza = $this->consultaRaza($desde, $hasta);
+
+            if ($terminalesSeleccionadas !== null) {
+                $queryRaza->whereIn(DB::raw($this->terminalKeyExpression()), $terminalesSeleccionadas);
+            }
+
+            $acumular($queryRaza->toBase()->cursor(), fn (): string => self::ETIQUETA_RAZA);
         }
 
         $filas = collect($acumulado)
@@ -244,6 +257,34 @@ class ReporteVentasService
         }
 
         return 'D';
+    }
+
+    /**
+     * @param  array<string, mixed>  $filtros
+     */
+    private function filtraCatalogo(array $filtros): bool
+    {
+        foreach (['grupo', 'subgrupo', 'division', 'sociedad', 'buscar'] as $campo) {
+            if (! empty($filtros[$campo])) {
+                return true;
+            }
+        }
+
+        return ($filtros['estatus'] ?? 'todos') !== 'todos';
+    }
+
+    /**
+     * @param  Collection<string, array<string, mixed>>  $catalogo
+     * @param  array<string, mixed>  $filtros
+     * @return array<int, string>
+     */
+    private function terminalesFiltradas(Collection $catalogo, array $filtros): array
+    {
+        return $catalogo
+            ->filter(fn (array $info, string $key): bool => $this->pasaFiltros($key, $info, $filtros))
+            ->keys()
+            ->map(fn (string $key): string => $key)
+            ->all();
     }
 
     private function consultaRaza(string $desde, string $hasta): Builder
