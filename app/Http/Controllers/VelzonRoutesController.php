@@ -8,11 +8,6 @@ use Inertia\Response;
 
 class VelzonRoutesController extends Controller
 {
-    public function dashboard(): Response
-    {
-        return Inertia::render('dashboard/index');
-    }
-
     public function auth_signin_basic(): Response
     {
         return Inertia::render('auth-pages/signin/basic', [

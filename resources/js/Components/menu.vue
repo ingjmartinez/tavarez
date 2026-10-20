@@ -183,6 +183,13 @@ export default {
           <span data-key="t-menu"> {{ $t("t-menu") }}</span>
         </li>
 
+        <li class="nav-item">
+          <Link :href="route('dashboard')" class="nav-link menu-link">
+            <i class="ri-dashboard-line"></i>
+            <span>Inicio</span>
+          </Link>
+        </li>
+
 
           <li class="nav-item">
           <a class="nav-link menu-link" href="#sidebarContabilidad" data-bs-toggle="collapse" role="button" aria-expanded="false"

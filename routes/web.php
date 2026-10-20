@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\CentroCostoController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\PagosMismaEmpresaController;
 use App\Http\Controllers\PagosOtraEmpresaController;
 use App\Http\Controllers\ProcesarTodoController;
@@ -94,5 +95,6 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
         Route::delete('/eliminar', 'eliminar')->name('eliminar')->middleware('can:eliminar-datos');
     });
 
-    Route::get('/', [VelzonRoutesController::class, 'dashboard'])->name('dashboard');
+    Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/dashboard/datos', [DashboardController::class, 'datos'])->name('dashboard.datos');
 });

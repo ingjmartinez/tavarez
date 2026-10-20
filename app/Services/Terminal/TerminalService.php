@@ -30,7 +30,7 @@ class TerminalService
         return $key === '' ? '0' : $key;
     }
 
-    private function terminalKeyExpression(): string
+    public function terminalKeyExpression(): string
     {
         if (DB::getDriverName() === 'sqlite') {
             return "COALESCE(NULLIF(LTRIM(TRIM(agencia_id), '0'), ''), '0')";
