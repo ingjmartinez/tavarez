@@ -31,6 +31,8 @@ class ProcesarTodoProgramado extends Command
      */
     public function handle(ProcesarTodoProgramadoService $service): int
     {
+        ini_set('memory_limit', '1024M');
+
         $configuracion = DB::table('procesar_todo_configuraciones')->where('id', 1)->first();
         $fecha = now('America/Santo_Domingo')
             ->subDays(($configuracion?->dia ?? 'ayer') === 'hoy' ? 0 : 1)

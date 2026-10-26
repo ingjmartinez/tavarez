@@ -22,7 +22,8 @@ class Kernel extends ConsoleKernel
             $schedule->command('app:procesar-todo-programado')
                 ->dailyAt($hora)
                 ->timezone('America/Santo_Domingo')
-                ->withoutOverlapping();
+                ->withoutOverlapping()
+                ->appendOutputTo(storage_path('logs/procesar-todo.log'));
         }
     }
 
