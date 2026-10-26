@@ -25,6 +25,7 @@ class ProcesarTodoController extends Controller
             'tokenValid' => (bool) $token?->isValid(),
             'horaProgramada' => $configuracion?->hora,
             'correoProgramado' => $configuracion?->correo ?? config('mail.procesar_todo_recipient'),
+            'correoSecundarioProgramado' => $configuracion?->correo_secundario,
             'diaProgramado' => $configuracion?->dia ?? 'ayer',
             'puedeConfigurar' => Gate::allows('configurar-reportes'),
         ]);
@@ -35,14 +36,15 @@ class ProcesarTodoController extends Controller
         $data = $request->validate([
             'hora' => ['required', 'date_format:H:i'],
             'correo' => ['required', 'email', 'max:255'],
+            'correo_secundario' => ['nullable', 'email', 'max:255', 'different:correo'],
             'dia' => ['required', 'in:hoy,ayer'],
         ]);
 
         DB::table('procesar_todo_configuraciones')->updateOrInsert(
             ['id' => 1],
-            ['hora' => $data['hora'], 'correo' => $data['correo'], 'dia' => $data['dia'], 'updated_at' => now(), 'created_at' => now()],
+            ['hora' => $data['hora'], 'correo' => $data['correo'], 'correo_secundario' => $data['correo_secundario'] ?? null, 'dia' => $data['dia'], 'updated_at' => now(), 'created_at' => now()],
         );
 
-        return response()->json(['message' => 'Configuración programada guardada.', ...$data]);
+        return response()->json(['message' => 'Configuración programada guardada.', ...$data, 'correo_secundario' => $data['correo_secundario'] ?? null]);
     }
 }

@@ -44,7 +44,12 @@ class ProcesarTodoProgramado extends Command
         }
 
         try {
-            Mail::to($configuracion?->correo ?? config('mail.procesar_todo_recipient'))
+            $destinatarios = array_values(array_unique(array_filter([
+                $configuracion?->correo ?? config('mail.procesar_todo_recipient'),
+                $configuracion?->correo_secundario,
+            ])));
+
+            Mail::to($destinatarios)
                 ->send(new ResultadoProcesarTodo($fecha, $resultados));
         } catch (Throwable $exception) {
             Log::error('No se pudo enviar el correo del proceso automatico', ['fecha' => $fecha, 'exception' => $exception]);

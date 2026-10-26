@@ -14,12 +14,12 @@ use function Pest\Laravel\mock;
 test('administrator saves the daily time, recipient and processing day', function () {
     $this->actingAs(User::factory()->create(['role' => User::ROLE_ADMIN]));
 
-    $this->putJson(route('procesar-todo.configurar'), ['hora' => '02:30', 'correo' => 'destino@example.com', 'dia' => 'hoy'])
-        ->assertOk()->assertJsonPath('hora', '02:30')->assertJsonPath('correo', 'destino@example.com')->assertJsonPath('dia', 'hoy');
+    $this->putJson(route('procesar-todo.configurar'), ['hora' => '02:30', 'correo' => 'destino@example.com', 'correo_secundario' => 'otro@example.com', 'dia' => 'hoy'])
+        ->assertOk()->assertJsonPath('hora', '02:30')->assertJsonPath('correo', 'destino@example.com')->assertJsonPath('correo_secundario', 'otro@example.com')->assertJsonPath('dia', 'hoy');
 
-    $this->assertDatabaseHas('procesar_todo_configuraciones', ['id' => 1, 'hora' => '02:30', 'correo' => 'destino@example.com', 'dia' => 'hoy']);
+    $this->assertDatabaseHas('procesar_todo_configuraciones', ['id' => 1, 'hora' => '02:30', 'correo' => 'destino@example.com', 'correo_secundario' => 'otro@example.com', 'dia' => 'hoy']);
     $this->get(route('procesar-todo.index'))
-        ->assertInertia(fn ($page) => $page->component('procesar-todo/index')->where('horaProgramada', '02:30')->where('correoProgramado', 'destino@example.com')->where('diaProgramado', 'hoy'));
+        ->assertInertia(fn ($page) => $page->component('procesar-todo/index')->where('horaProgramada', '02:30')->where('correoProgramado', 'destino@example.com')->where('correoSecundarioProgramado', 'otro@example.com')->where('diaProgramado', 'hoy'));
 });
 
 test('invalid time does not replace the saved time', function () {
@@ -30,8 +30,20 @@ test('invalid time does not replace the saved time', function () {
         ->assertUnprocessable()->assertJsonValidationErrors('hora');
     $this->putJson(route('procesar-todo.configurar'), ['hora' => '02:30', 'correo' => 'invalid', 'dia' => 'mañana'])
         ->assertUnprocessable()->assertJsonValidationErrors(['correo', 'dia']);
+    $this->putJson(route('procesar-todo.configurar'), ['hora' => '02:30', 'correo' => 'destino@example.com', 'correo_secundario' => 'destino@example.com', 'dia' => 'ayer'])
+        ->assertUnprocessable()->assertJsonValidationErrors('correo_secundario');
 
     $this->assertDatabaseHas('procesar_todo_configuraciones', ['id' => 1, 'hora' => '02:30', 'correo' => 'destino@example.com', 'dia' => 'ayer']);
+});
+
+test('administrator can remove the optional second recipient', function () {
+    $this->actingAs(User::factory()->create(['role' => User::ROLE_ADMIN]));
+    $this->putJson(route('procesar-todo.configurar'), ['hora' => '02:30', 'correo' => 'destino@example.com', 'correo_secundario' => 'otro@example.com', 'dia' => 'ayer'])->assertOk();
+
+    $this->putJson(route('procesar-todo.configurar'), ['hora' => '02:30', 'correo' => 'destino@example.com', 'correo_secundario' => '', 'dia' => 'ayer'])
+        ->assertOk()->assertJsonPath('correo_secundario', null);
+
+    $this->assertDatabaseHas('procesar_todo_configuraciones', ['id' => 1, 'correo_secundario' => null]);
 });
 
 test('unauthorized user cannot change the daily time', function () {
@@ -65,7 +77,7 @@ test('scheduled command processes the same day and emails the configured recipie
     Mail::fake();
     $this->travelTo(Carbon::parse('2026-10-25 03:00:00', 'America/Santo_Domingo'));
     DB::table('procesar_todo_configuraciones')->insert([
-        'id' => 1, 'hora' => '03:00', 'correo' => 'destino@example.com', 'dia' => 'hoy',
+        'id' => 1, 'hora' => '03:00', 'correo' => 'destino@example.com', 'correo_secundario' => 'otro@example.com', 'dia' => 'hoy',
     ]);
     mock(ProcesarTodoProgramadoService::class)
         ->shouldReceive('procesar')
@@ -75,7 +87,7 @@ test('scheduled command processes the same day and emails the configured recipie
 
     $this->artisan('app:procesar-todo-programado')->assertSuccessful();
 
-    Mail::assertSent(ResultadoProcesarTodo::class, fn (ResultadoProcesarTodo $mail): bool => $mail->hasTo('destino@example.com') && $mail->fecha === '2026-10-25');
+    Mail::assertSent(ResultadoProcesarTodo::class, fn (ResultadoProcesarTodo $mail): bool => $mail->hasTo('destino@example.com') && $mail->hasTo('otro@example.com') && $mail->fecha === '2026-10-25');
 });
 
 test('result email displays saved row counts for each module', function () {

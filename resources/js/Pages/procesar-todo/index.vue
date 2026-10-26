@@ -20,6 +20,7 @@ export default {
     },
     horaProgramada: { type: String, default: null },
     correoProgramado: { type: String, default: null },
+    correoSecundarioProgramado: { type: String, default: null },
     diaProgramado: { type: String, default: "ayer" },
     puedeConfigurar: { type: Boolean, default: false },
   },
@@ -36,6 +37,8 @@ export default {
       horaGuardada: this.horaProgramada,
       correo: this.correoProgramado || "",
       correoGuardado: this.correoProgramado,
+      correoSecundario: this.correoSecundarioProgramado || "",
+      correoSecundarioGuardado: this.correoSecundarioProgramado,
       dia: this.diaProgramado,
       diaGuardado: this.diaProgramado,
       expiresAt: this.tokenExpiresAt,
@@ -62,15 +65,16 @@ export default {
     async guardarConfiguracion() {
       this.guardandoConfiguracion = true;
       try {
-        const { data } = await axios.put(route("procesar-todo.configurar"), { hora: this.hora, correo: this.correo, dia: this.dia });
+        const { data } = await axios.put(route("procesar-todo.configurar"), { hora: this.hora, correo: this.correo, correo_secundario: this.correoSecundario, dia: this.dia });
         this.horaGuardada = data.hora;
         this.correoGuardado = data.correo;
+        this.correoSecundarioGuardado = data.correo_secundario;
         this.diaGuardado = data.dia;
         this.configuracionModal = false;
         this.notify(true, data.message);
       } catch (error) {
         const errors = error.response?.data?.errors;
-        this.notify(false, errors?.hora?.[0] || errors?.correo?.[0] || errors?.dia?.[0] || this.errorMessage(error));
+        this.notify(false, errors?.hora?.[0] || errors?.correo?.[0] || errors?.correo_secundario?.[0] || errors?.dia?.[0] || this.errorMessage(error));
       } finally {
         this.guardandoConfiguracion = false;
       }
@@ -278,7 +282,7 @@ export default {
             </div>
           </BCardHeader>
           <BCardBody>
-            <p class="text-muted mb-3">Ejecución automática: {{ horaGuardada ? `${horaGuardada} (hora de Santo Domingo), cada día para ${diaGuardado === 'hoy' ? 'el mismo día' : 'el día anterior'}. Correo: ${correoGuardado || 'sin configurar'}` : 'Sin configurar' }}.</p>
+            <p class="text-muted mb-3">Ejecución automática: {{ horaGuardada ? `${horaGuardada} (hora de Santo Domingo), cada día para ${diaGuardado === 'hoy' ? 'el mismo día' : 'el día anterior'}. Correos: ${[correoGuardado, correoSecundarioGuardado].filter(Boolean).join(', ') || 'sin configurar'}` : 'Sin configurar' }}.</p>
             <BRow class="g-3 mb-4 align-items-end">
               <BCol md="2">
                 <BButton variant="secondary" :disabled="loading" @click="generarToken">Generar token</BButton>
@@ -354,8 +358,10 @@ export default {
           <option value="ayer">Día anterior</option>
           <option value="hoy">Mismo día</option>
         </select>
-        <label for="correoProgramado" class="form-label">Enviar resultado a</label>
+        <label for="correoProgramado" class="form-label">Correo principal</label>
         <input id="correoProgramado" v-model.trim="correo" type="email" required class="form-control mb-3" placeholder="correo@empresa.com" />
+        <label for="correoSecundarioProgramado" class="form-label">Segundo correo (opcional)</label>
+        <input id="correoSecundarioProgramado" v-model.trim="correoSecundario" type="email" class="form-control mb-3" placeholder="otro@empresa.com" />
         <div class="d-flex justify-content-end gap-2">
           <BButton variant="light" @click="configuracionModal = false">Cancelar</BButton>
           <BButton variant="primary" type="submit" :disabled="guardandoConfiguracion">Guardar</BButton>
