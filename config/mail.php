@@ -103,6 +103,8 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    'procesar_todo_recipient' => env('PROCESAR_TODO_EMAIL'),
+
     /*
     |--------------------------------------------------------------------------
     | Markdown Mail Settings

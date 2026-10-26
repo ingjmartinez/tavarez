@@ -65,6 +65,8 @@ Route::middleware(['auth:sanctum', config('jetstream.auth_session'), 'verified']
     });
 
     Route::get('/api-procesar-todo', [ProcesarTodoController::class, 'index'])->name('procesar-todo.index');
+    Route::put('/api-procesar-todo/configurar', [ProcesarTodoController::class, 'configurar'])
+        ->middleware('can:configurar-reportes')->name('procesar-todo.configurar');
 
     Route::prefix('api-ventas-usuario')->name('ventas-usuario.')->controller(VentasUsuarioController::class)->group(function () {
         Route::get('/', 'index')->name('index');

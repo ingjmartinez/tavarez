@@ -18,6 +18,10 @@ export default {
       type: Boolean,
       default: false,
     },
+    horaProgramada: { type: String, default: null },
+    correoProgramado: { type: String, default: null },
+    diaProgramado: { type: String, default: "ayer" },
+    puedeConfigurar: { type: Boolean, default: false },
   },
   data() {
     return {
@@ -26,6 +30,14 @@ export default {
       fechaHasta: "",
       rangoModal: false,
       loading: false,
+      configuracionModal: false,
+      guardandoConfiguracion: false,
+      hora: this.horaProgramada || "",
+      horaGuardada: this.horaProgramada,
+      correo: this.correoProgramado || "",
+      correoGuardado: this.correoProgramado,
+      dia: this.diaProgramado,
+      diaGuardado: this.diaProgramado,
       expiresAt: this.tokenExpiresAt,
       isTokenValid: this.tokenValid,
       logs: [],
@@ -47,6 +59,22 @@ export default {
     },
   },
   methods: {
+    async guardarConfiguracion() {
+      this.guardandoConfiguracion = true;
+      try {
+        const { data } = await axios.put(route("procesar-todo.configurar"), { hora: this.hora, correo: this.correo, dia: this.dia });
+        this.horaGuardada = data.hora;
+        this.correoGuardado = data.correo;
+        this.diaGuardado = data.dia;
+        this.configuracionModal = false;
+        this.notify(true, data.message);
+      } catch (error) {
+        const errors = error.response?.data?.errors;
+        this.notify(false, errors?.hora?.[0] || errors?.correo?.[0] || errors?.dia?.[0] || this.errorMessage(error));
+      } finally {
+        this.guardandoConfiguracion = false;
+      }
+    },
     notify(ok, text) {
       Swal.fire({ title: ok ? "Listo" : "Error", text, icon: ok ? "success" : "error" });
     },
@@ -244,9 +272,13 @@ export default {
         <BCard no-body>
           <BCardHeader class="d-flex align-items-center justify-content-between">
             <h5 class="card-title mb-0">Ejecutar todas las tareas por fecha</h5>
-            <span class="badge" :class="isTokenValid ? 'bg-success' : 'bg-danger'">{{ tokenLabel }}</span>
+            <div class="d-flex align-items-center gap-2">
+              <BButton v-if="puedeConfigurar" variant="outline-primary" @click="configuracionModal = true">Configurar</BButton>
+              <span class="badge" :class="isTokenValid ? 'bg-success' : 'bg-danger'">{{ tokenLabel }}</span>
+            </div>
           </BCardHeader>
           <BCardBody>
+            <p class="text-muted mb-3">Ejecución automática: {{ horaGuardada ? `${horaGuardada} (hora de Santo Domingo), cada día para ${diaGuardado === 'hoy' ? 'el mismo día' : 'el día anterior'}. Correo: ${correoGuardado || 'sin configurar'}` : 'Sin configurar' }}.</p>
             <BRow class="g-3 mb-4 align-items-end">
               <BCol md="2">
                 <BButton variant="secondary" :disabled="loading" @click="generarToken">Generar token</BButton>
@@ -311,6 +343,25 @@ export default {
         </BCard>
       </BCol>
     </BRow>
+
+    <BModal v-model="configuracionModal" title="Configurar ejecución automática" hide-footer centered>
+      <p>El proceso ejecutará los cuatro módulos cada día a la hora de Santo Domingo. Al terminar enviará un correo con los resultados.</p>
+      <form @submit.prevent="guardarConfiguracion">
+        <label for="horaProgramada" class="form-label">Hora diaria</label>
+        <input id="horaProgramada" v-model="hora" type="time" required class="form-control mb-3" />
+        <label for="diaProgramado" class="form-label">Fecha que procesará</label>
+        <select id="diaProgramado" v-model="dia" required class="form-select mb-3">
+          <option value="ayer">Día anterior</option>
+          <option value="hoy">Mismo día</option>
+        </select>
+        <label for="correoProgramado" class="form-label">Enviar resultado a</label>
+        <input id="correoProgramado" v-model.trim="correo" type="email" required class="form-control mb-3" placeholder="correo@empresa.com" />
+        <div class="d-flex justify-content-end gap-2">
+          <BButton variant="light" @click="configuracionModal = false">Cancelar</BButton>
+          <BButton variant="primary" type="submit" :disabled="guardandoConfiguracion">Guardar</BButton>
+        </div>
+      </form>
+    </BModal>
 
     <BModal v-model="rangoModal" title="Procesar / Eliminar rango de fechas" size="md" hide-footer centered header-class="bg-warning-subtle p-3">
       <p class="text-muted">El proceso se ejecuta dia por dia, con los {{ modulos.length }} modulos en orden.</p>
