@@ -112,8 +112,14 @@ test('result email displays saved row counts for each module', function () {
 });
 
 test('processing reports only rows committed for each api', function () {
+    ExternalApiToken::query()->create([
+        'name' => VentasUsuarioApiService::TOKEN_NAME,
+        'token' => 'token-anterior',
+        'expires_at' => now()->addDay(),
+    ]);
+
     $api = Mockery::mock(VentasUsuarioApiService::class)->makePartial();
-    $api->shouldReceive('currentToken')->once()->andReturn(null);
+    $api->shouldNotReceive('currentToken');
     $api->shouldReceive('generateToken')->once()->andReturn(new ExternalApiToken);
     $api->shouldReceive('fetchVentas')->once()->with('2026-10-24')->andReturn([['monto' => 10], ['monto' => 20]]);
     $api->shouldReceive('fetchPagos')->once()->andReturn([]);

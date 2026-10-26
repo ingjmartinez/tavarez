@@ -21,9 +21,7 @@ class ProcesarTodoProgramadoService
         $resultados = [];
 
         try {
-            if (! $this->api->currentToken()?->isValid()) {
-                $this->api->generateToken();
-            }
+            $this->api->generateToken();
         } catch (Throwable $exception) {
             Log::error('No se pudo generar el token del proceso automatico', ['fecha' => $fecha, 'exception' => $exception]);
 
